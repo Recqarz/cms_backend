@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
@@ -70,8 +71,10 @@ router.post('/upload-bulk', upload.single('file'), async (req, res) => {
 // Function to fetch case details from external API and save to DB
 const fetchCaseDetailsAndSave = async (cnrNumber) => {
   try {
+    const apiUrl = process.env.API_URL; // Fetch API URL from environment variables
+
     const externalResponse = await fetchWithRetry(
-      'http://127.0.0.1:5000/getCase_Details_satus',
+      apiUrl,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +112,7 @@ const fetchCaseDetailsAndSave = async (cnrNumber) => {
   }
 };
 
-// Function to retry fetching  details
+// Function to retry fetching details
 const fetchWithRetry = async (url, options, retries = 3) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -126,7 +129,7 @@ const transformCaseData = (data) => {
   const caseDetails = data['Case Details'] || {};
 
   return {
-    cnrNumber: caseDetails['CNR Number']?.split(' (')[0] || 'N/A', // Clean up the CNR number
+    cnrNumber: caseDetails['CNR Number']?.split(' (')[0] || 'N/A',
     caseType: caseDetails['Case Type'] || 'N/A',
     filingDate: caseDetails['Filing Date'] || 'N/A',
     filingNumber: caseDetails['Filing Number'] || 'N/A',
