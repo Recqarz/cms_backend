@@ -34,13 +34,15 @@ const processCnrNumbers = async (
       try {
         // response = await getCaseDetailsProcess(cnrNumber);
         const apiUrl = `${process.env.STANDARD_API}/api/standard/ecourt`
-      const payload = { cnrNumber };
+        console.log("apiUrl:", apiUrl)
+      const payload = { cnr_number: cnrNumber };
 
       let caseData = await axios.post(apiUrl, payload);
 
-      console.log("standard api:", caseData)
 
       response = caseData.data
+      console.log("response standard api:", response)
+
 
         if (response.status === true) {
           let modifiedResult = {
@@ -94,7 +96,7 @@ const processCnrNumbers = async (
 
 const processUnsavedCnr = async () => {
   try {
-    const unSaveCnrNumber = await UnsaveCnrCollection.find().limit(50);
+    const unSaveCnrNumber = await UnsaveCnrCollection.find().limit(1);
     console.log("unSavedCnrNumber", unSaveCnrNumber);
     if(unSaveCnrNumber.length === 0 ){
       return {status: true, message:"Not found any unSaved CNR Number !"}
@@ -119,10 +121,11 @@ const processUnsavedCnr = async () => {
 
       console.log("Processing results:--------", response);
       for (let result of response) {
-        if (result?.result.status === true) {
+        console.log("result--", result)
+        if (result.status === true) {
           const savedCnrDetails = new cnrDetailsCollection({
-            cnrNumber: result.result.cnr_number,
-            cnrDetails: result.result,
+            cnrNumber: result.cnr_number,
+            cnrDetails: result,
             // userIDs:result.userIDs || [],
             userIDs: result.userIDs.map((id) =>(id)),
           });
@@ -160,7 +163,7 @@ const processUnsavedCnr = async () => {
 };
 
 // Set up cron job to run every 2 hr
-cron.schedule("0 */2 * * *", async () => {
+cron.schedule("*/3 * * * *", async () => {
   console.log("Running cron job: processUnsavedCnr");
   await processUnsavedCnr();
 });
