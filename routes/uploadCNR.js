@@ -63,7 +63,7 @@ uploadCnrRoute.post("/upload-cnr-numbers", async (req, res) => {
 
     res
       .status(200)
-      .json({ status: true, message: "CNR numbers stored successfully." });
+      .json({ status: true, message: "The CNR Number is currently being processed and will be available shortly." });
   } catch (error) {
     console.error("Error saving CNR numbers:", error.message);
     res
