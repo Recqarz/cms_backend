@@ -8,15 +8,12 @@ const unsavedCnrSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     }],
+    status: {type: Boolean}
   },
   
   { timestamps: false }
 );
 
-// const UnsaveCnrCollection = mongoose.model("UnsavedCnrNumber", unsavedCnrSchema);
 const UnsaveCnrCollection = mongoose.models.UnsavedCnrNumber || mongoose.model("UnsavedCnrNumber", unsavedCnrSchema);
-
-
-// mongoose.models.CnrDetails || mongoose.model('CnrDetails', updateCnrDataSchema);
 
 module.exports = UnsaveCnrCollection;

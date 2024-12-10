@@ -96,25 +96,39 @@ const processCnrNumbers = async (
 
 const processUnsavedCnr = async () => {
   try {
-    const unSaveCnrNumber = await UnsaveCnrCollection.find().limit(1);
-    console.log("unSavedCnrNumber", unSaveCnrNumber);
-    if(unSaveCnrNumber.length === 0 ){
-      return {status: true, message:"Not found any unSaved CNR Number !"}
-    }
+    // const unSaveCnrNumber = await UnsaveCnrCollection.find({ status: false }).limit(1);
+    // console.log("unSavedCnrNumber", unSaveCnrNumber);
+    // if(unSaveCnrNumber.length === 0 ){
+    //   return {status: true, message:"Not found any unSaved CNR Number !"}
+    // }
+
+    // const haveToUpdateCnrDetails = await updateCnrData.find();
+
+    // const updatedCnrNumbers = haveToUpdateCnrDetails.map(
+    //   (item) => item.cnrNumber
+    // );
+
+    // const filteredCnrNumbers = unSaveCnrNumber.filter(
+    //   (item) => !updatedCnrNumbers.includes(item.cnrNumber)
+    // );
+
 
     const haveToUpdateCnrDetails = await updateCnrData.find();
+    const unSaveCnrNumber = await UnsaveCnrCollection.find({ status: false });
 
-    // console.log("haveToUpdateCnrDetails", haveToUpdateCnrDetails);
+    // Extract the `cnrNumber` field from `haveToUpdateCnrDetails`
+    const updatedCnrNumbers = new Set(haveToUpdateCnrDetails.map(item => item.cnrNumber));
 
-    // Extract `cnrNumber` values from `haveToUpdateCnrDetails`
-    const updatedCnrNumbers = haveToUpdateCnrDetails.map(
-      (item) => item.cnrNumber
-    );
+    // Filter `unSaveCnrNumber` to get only those not in `updatedCnrNumbers`
+    const filteredCnrNumbers = unSaveCnrNumber
+      .filter(item => !updatedCnrNumbers.has(item.cnrNumber))
+      .slice(0, 2); // Limit the result to 5 items
 
-    // Filter `unSaveCnrNumber` to get the ones not in `updatedCnrNumbers`
-    const filteredCnrNumbers = unSaveCnrNumber.filter(
-      (item) => !updatedCnrNumbers.includes(item.cnrNumber)
-    );
+    // console.log("filteredCnrNumbers-----", filteredCnrNumbers);
+
+    if(filteredCnrNumbers.length === 0 ){
+      return {status: true, message:"Not found any unSaved CNR Number !"}
+    }
 
     if (filteredCnrNumbers.length > 0) {
       const response = await processCnrNumbers(filteredCnrNumbers);
@@ -122,16 +136,32 @@ const processUnsavedCnr = async () => {
       console.log("Processing results:--------", response);
       for (let result of response) {
         console.log("result--", result)
-        if (result.status === true) {
+        if (result.result.status === true) {
+            const haveto = result.result.cnr_number
+            console.log("haveto---", haveto)
+
+            const updatedDocument = await UnsaveCnrCollection.findOneAndUpdate(
+              { cnrNumber: haveto }, // Find the document with this cnrNumber
+              { status: true }, // Update the status field
+              { new: true } // Return the updated document
+            );
+        
+            if (updatedDocument) {
+              console.log("CNR status updated successfully in unsave:", updatedDocument);
+            } else {
+              console.log("CNR not found in unsave");
+            }
+         
+
           const savedCnrDetails = new cnrDetailsCollection({
-            cnrNumber: result.cnr_number,
-            cnrDetails: result,
+            cnrNumber: result.result.cnr_number,
+            cnrDetails: result.result,
             // userIDs:result.userIDs || [],
             userIDs: result.userIDs.map((id) =>(id)),
           });
           await savedCnrDetails.save();
           console.log(`Details saved for in cron: ${result.result.cnr_number}`);
-        } else if (result?.status === false) {
+        } else if (result?.result.status === false) {
           const isCnrNumberFound = await cnrDetailsCollection.findOne({
             cnrNumber: result.cnr_number,
           });
@@ -143,11 +173,12 @@ const processUnsavedCnr = async () => {
             if (!unsavedCnrExists) {
               const saveUnsavedCnrNumber = new UnsaveCnrCollection({
                 cnrNumber: result.cnr_number,
-                userIDs: [userID]
+                userIDs: [userID],
+                status: false
               });
 
               await saveUnsavedCnrNumber.save();
-              console.log(`Unsaved CNR number added: ${result.cnr_number}`)
+              console.log(`Unsaved CNR number status false : ${result.cnr_number}`)
             }
           }
         } else {
@@ -163,7 +194,7 @@ const processUnsavedCnr = async () => {
 };
 
 // Set up cron job to run every 2 hr
-cron.schedule("*/3 * * * *", async () => {
+cron.schedule("*/20 * * * *", async () => {
   console.log("Running cron job: processUnsavedCnr");
   await processUnsavedCnr();
 });
