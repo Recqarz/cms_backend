@@ -114,6 +114,8 @@ const generateToken = (id) => {
 const login = expressAsyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  console.log("email:", email, password)
+
   const user = await User.findOne({ email });
   if (!user) {
     return res.status(400).json({ success: false, message: 'User not found' });

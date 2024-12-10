@@ -11,6 +11,10 @@ require('./utils/emailReminder');
 
 const cors = require('cors');
 const cookieParser = require('cookie-parser');  
+const { crawlerRoute } = require('./routes/crawler.js');
+const getAllCnrDetails = require('./routes/getCnrDetails.route.js');
+const getUnsavedCnrRoute = require('./routes/getUnsavedCnr.route.js');
+const uploadCnrRoute = require('./routes/uploadCNR.js');
 dotenv.config();
 connectDB(); 
 
@@ -31,6 +35,10 @@ app.use('/api/email', authRoutes); // Authentication related routes
 app.use('/api/case', caseRoutes); // Case related routes
 app.use("/api/search", searchRoute);
 app.use("/api/up", uploadRoute );
+app.use("/api", crawlerRoute)
+app.use("/api", getAllCnrDetails)
+app.use("/api", getUnsavedCnrRoute)
+app.use("/api", uploadCnrRoute)
 // app.use('/api/file',fileRoute);
 
 

@@ -44,46 +44,46 @@ async function updateCaseWithScrapedData(dbCase, cnrNumberFromDB, scrapedData) {
 }
 
 // Cron Job to scrape data and update records
-cron.schedule('0 */2 * * *', async () => {
-    console.log('Running cron job to scrape data...');
-    const apiUrl = process.env.API_URL; // Fetch API URL from .env
+// cron.schedule('0 */2 * * *', async () => {
+//     console.log('Running cron job to scrape data...');
+//     const apiUrl = process.env.API_URL; // Fetch API URL from .env
 
-    try {
-        const cases = await Case.find();
-        for (const dbCase of cases) {
-            if (!dbCase.cnrNumber) {
-                console.error(`CNR number is missing in record ID ${dbCase._id}`);
-                continue;
-            }
+//     try {
+//         const cases = await Case.find();
+//         for (const dbCase of cases) {
+//             if (!dbCase.cnrNumber) {
+//                 console.error(`CNR number is missing in record ID ${dbCase._id}`);
+//                 continue;
+//             }
 
-            const cnrNumberFromDB = extractValidCNR(dbCase.cnrNumber);
-            if (!cnrNumberFromDB) {
-                console.error(`Invalid CNR number in record ID ${dbCase._id}: ${dbCase.cnrNumber}`);
-                continue;
-            }
+//             const cnrNumberFromDB = extractValidCNR(dbCase.cnrNumber);
+//             if (!cnrNumberFromDB) {
+//                 console.error(`Invalid CNR number in record ID ${dbCase._id}: ${dbCase.cnrNumber}`);
+//                 continue;
+//             }
 
-            console.log(`Fetching data for CNR Number: ${cnrNumberFromDB}`);
-            try {
-                const response = await axios.post(
-                    apiUrl,
-                    { cnr_number: cnrNumberFromDB },
-                    { headers: { 'Content-Type': 'application/json' } }
-                );
+//             console.log(`Fetching data for CNR Number: ${cnrNumberFromDB}`);
+//             try {
+//                 const response = await axios.post(
+//                     apiUrl,
+//                     { cnr_number: cnrNumberFromDB },
+//                     { headers: { 'Content-Type': 'application/json' } }
+//                 );
 
-                const scrapedData = response.data;
-                console.log('Scraped Data:', JSON.stringify(scrapedData, null, 2));
+//                 const scrapedData = response.data;
+//                 console.log('Scraped Data:', JSON.stringify(scrapedData, null, 2));
 
-                if (!scrapedData || typeof scrapedData !== 'object') {
-                    console.error(`Invalid data received for CNR ${cnrNumberFromDB}: ${JSON.stringify(scrapedData)}`);
-                    continue;
-                }
+//                 if (!scrapedData || typeof scrapedData !== 'object') {
+//                     console.error(`Invalid data received for CNR ${cnrNumberFromDB}: ${JSON.stringify(scrapedData)}`);
+//                     continue;
+//                 }
 
-                await updateCaseWithScrapedData(dbCase, cnrNumberFromDB, scrapedData);
-            } catch (axiosError) {
-                console.error(`Failed to fetch data for CNR ${cnrNumberFromDB}: ${axiosError.message}`);
-            }
-        }
-    } catch (error) {
-        console.error('Error in cron job:', error.message);
-    }
-});
+//                 await updateCaseWithScrapedData(dbCase, cnrNumberFromDB, scrapedData);
+//             } catch (axiosError) {
+//                 console.error(`Failed to fetch data for CNR ${cnrNumberFromDB}: ${axiosError.message}`);
+//             }
+//         }
+//     } catch (error) {
+//         console.error('Error in cron job:', error.message);
+//     }
+// });
