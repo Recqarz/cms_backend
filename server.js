@@ -21,7 +21,7 @@ connectDB();
 const app = express();
 
 const corsOptions = {
-  origin: '*',  
+  origin: ['http://localhost:3005',"https://cms.recqarz.com"],  
   credentials: true, 
   optionSuccessStatus: 200,
 };
