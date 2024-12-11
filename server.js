@@ -18,6 +18,7 @@ const uploadCnrRoute = require('./routes/uploadCNR.js');
 dotenv.config();
 connectDB(); 
 
+
 const app = express();
 
 const corsOptions = {
