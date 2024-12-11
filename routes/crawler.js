@@ -31,7 +31,7 @@ crawlerRoute.post("/crawler/caseDetails", async (req, res) => {
       cnrNumber: cnr_number,
     });
 
-    console.log("isCnrNumberFound:", isCnrNumberFound)
+    // console.log("isCnrNumberFound:", isCnrNumberFound)
     if(isCnrNumberFound){
 
       if(!isCnrNumberFound.userIDs.includes(userID)){
@@ -80,7 +80,7 @@ crawlerRoute.post("/crawler/caseDetails", async (req, res) => {
       });
       // cnrDetailsCollection
 
-      console.log("------isCnrNumberFound:", isCnrNumberFound)
+      // console.log("------isCnrNumberFound:", isCnrNumberFound)
 
       if (!isCnrNumberFound) {
         const unsavedCnrExists = await UnsaveCnrCollection.findOne({

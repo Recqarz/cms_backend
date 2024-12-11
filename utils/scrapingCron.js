@@ -40,7 +40,7 @@ async function updateCaseWithScrapedData(dbCase, cnrNumberFromDB, scrapedData) {
 
     dbCase.caseDetails = updatedCaseDetails;
     await dbCase.save();
-    console.log(`Case with CNR ${cnrNumberFromDB} successfully updated with new data.`);
+    // console.log(`Case with CNR ${cnrNumberFromDB} successfully updated with new data.`);
 }
 
 // Cron Job to scrape data and update records

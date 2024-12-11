@@ -9,7 +9,7 @@ uploadCnrRoute.post("/upload-cnr-numbers", async (req, res) => {
   try {
     const { cnrNumbers, userID } = req.body;
 
-    console.log("Request body:", req.body);
+    // console.log("Request body:", req.body);
     if (!userID || !mongoose.Types.ObjectId.isValid(userID)) {
       return res.status(400).json({ error: "A valid userID is required." });
     }
@@ -22,7 +22,7 @@ uploadCnrRoute.post("/upload-cnr-numbers", async (req, res) => {
 
     const savedEntries = [];
     for (const cnrNumber of cnrNumbers) {
-      console.log(`Processing CNR Number: ${cnrNumber}`);
+      // console.log(`Processing CNR Number: ${cnrNumber}`);
 
       const isCnrNumberFound = await cnrDetailsCollection.findOne({
         cnrNumber: cnrNumber,
@@ -33,23 +33,23 @@ uploadCnrRoute.post("/upload-cnr-numbers", async (req, res) => {
           isCnrNumberFound.userIDs.push(userID);
           await isCnrNumberFound.save();
         } else {
-          console.log(`CNR details already uploaded : ${cnrNumber}`);
+          // console.log(`CNR details already uploaded : ${cnrNumber}`);
           continue;
         }
-        console.log(`Access granted to CNR details for : ${cnrNumber}`);
+        // console.log(`Access granted to CNR details for : ${cnrNumber}`);
       } else {
         let existingEntry = await UnsaveCnrCollection.findOne({ cnrNumber });
         if (existingEntry) {
-          console.log(`Found existing entry for CNR: ${cnrNumber}`);
+          // console.log(`Found existing entry for CNR: ${cnrNumber}`);
           if (!existingEntry.userIDs.includes(userID)) {
-            console.log(`Adding userID to existing CNR: ${cnrNumber}`);
+            // console.log(`Adding userID to existing CNR: ${cnrNumber}`);
             existingEntry.userIDs.push(userID);
             await existingEntry.save();
           }
           savedEntries.push(existingEntry);
         } else {
-          console.log(`Creating new entry for CNR: ${cnrNumber}`);
-          console.log("userID--------", userID);
+          // console.log(`Creating new entry for CNR: ${cnrNumber}`);
+          // console.log("userID--------", userID);
           const newEntry = new UnsaveCnrCollection({
             cnrNumber,
             userIDs: [userID],

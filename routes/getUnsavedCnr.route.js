@@ -17,7 +17,7 @@ const processCnrNumbers = async (
 ) => {
   const results = [];
 
-  console.log(" ARr filteredCnrNumbers:", filteredCnrNumbers);
+  // console.log(" ARr filteredCnrNumbers:", filteredCnrNumbers);
   for (const el of filteredCnrNumbers) {
     let cnrNumber = el.cnrNumber;
     let userIDs = el.userIDs;
@@ -25,23 +25,23 @@ const processCnrNumbers = async (
     let success = false;
     let response;
 
-    console.log(`Processing CNR number: ${cnrNumber}`);
+    // console.log(`Processing CNR number: ${cnrNumber}`);
 
     while (attempt < maxRetries && !success) {
       attempt += 1;
-      console.log(`Attempt ${attempt} for CNR number: ${cnrNumber}`);
+      // console.log(`Attempt ${attempt} for CNR number: ${cnrNumber}`);
 
       try {
         // response = await getCaseDetailsProcess(cnrNumber);
         const apiUrl = `${process.env.STANDARD_API}/api/standard/ecourt`
-        console.log("apiUrl:", apiUrl)
+        // console.log("apiUrl:", apiUrl)
       const payload = { cnr_number: cnrNumber };
 
       let caseData = await axios.post(apiUrl, payload);
 
 
       response = caseData.data
-      console.log("response standard api:", response)
+      // console.log("response standard api:", response)
 
 
         if (response.status === true) {
@@ -49,7 +49,7 @@ const processCnrNumbers = async (
             result: response,
             userIDs: userIDs,
           };
-          console.log(`Successfully processed CNR number: ${cnrNumber}`);
+          // console.log(`Successfully processed CNR number: ${cnrNumber}`);
           results.push(modifiedResult);
           success = true;
         } else {
@@ -82,11 +82,11 @@ const processCnrNumbers = async (
     }
 
     if (success) {
-      console.log(
-        `Waiting ${
-          delayMs / 1000
-        } seconds before processing the next CNR number...`
-      );
+      // console.log(
+      //   `Waiting ${
+      //     delayMs / 1000
+      //   } seconds before processing the next CNR number...`
+      // );
       await delay(delayMs); // Delay before moving to the next CNR number
     }
   }
@@ -122,7 +122,7 @@ const processUnsavedCnr = async () => {
     // Filter `unSaveCnrNumber` to get only those not in `updatedCnrNumbers`
     const filteredCnrNumbers = unSaveCnrNumber
       .filter(item => !updatedCnrNumbers.has(item.cnrNumber))
-      .slice(0, 2); // Limit the result to 5 items
+      .slice(0, 10); // Limit the result to 5 items
 
     // console.log("filteredCnrNumbers-----", filteredCnrNumbers);
 
@@ -133,12 +133,10 @@ const processUnsavedCnr = async () => {
     if (filteredCnrNumbers.length > 0) {
       const response = await processCnrNumbers(filteredCnrNumbers);
 
-      console.log("Processing results:--------", response);
       for (let result of response) {
-        console.log("result--", result)
+        // console.log("result--", result)
         if (result.result.status === true) {
             const haveto = result.result.cnr_number
-            console.log("haveto---", haveto)
 
             const updatedDocument = await UnsaveCnrCollection.findOneAndUpdate(
               { cnrNumber: haveto }, // Find the document with this cnrNumber
@@ -147,9 +145,9 @@ const processUnsavedCnr = async () => {
             );
         
             if (updatedDocument) {
-              console.log("CNR status updated successfully in unsave:", updatedDocument);
+              // console.log("CNR status updated successfully in unsave:", updatedDocument);
             } else {
-              console.log("CNR not found in unsave");
+              // console.log("CNR not found in unsave");
             }
          
 
@@ -160,7 +158,7 @@ const processUnsavedCnr = async () => {
             userIDs: result.userIDs.map((id) =>(id)),
           });
           await savedCnrDetails.save();
-          console.log(`Details saved for in cron: ${result.result.cnr_number}`);
+          // console.log(`Details saved for in cron: ${result.result.cnr_number}`);
         } else if (result?.result.status === false) {
           const isCnrNumberFound = await cnrDetailsCollection.findOne({
             cnrNumber: result.cnr_number,
@@ -178,24 +176,24 @@ const processUnsavedCnr = async () => {
               });
 
               await saveUnsavedCnrNumber.save();
-              console.log(`Unsaved CNR number status false : ${result.cnr_number}`)
+              // console.log(`Unsaved CNR number status false : ${result.cnr_number}`)
             }
           }
         } else {
-          console.log("--- not saved ---");
+          // console.log("--- not saved ---");
         }
       }
     } else {
-      console.log("No unmatched CNR numbers found!");
+      // console.log("No unmatched CNR numbers found!");
     }
   } catch (err) {
-    console.log("err:", err);
+    // console.log("err:", err);
   }
 };
 
 // Set up cron job to run every 2 hr
-cron.schedule("*/20 * * * *", async () => {
-  console.log("Running cron job: processUnsavedCnr");
+cron.schedule("*/23 * * * *", async () => {
+  // console.log("Running cron job: processUnsavedCnr");
   await processUnsavedCnr();
 });
 

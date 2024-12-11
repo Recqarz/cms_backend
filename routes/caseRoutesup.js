@@ -43,7 +43,7 @@ router.post('/upload-bulk', upload.single('file'), async (req, res) => {
       try {
         const existingCase = await Case.findOne({ cnrNumber });
         if (existingCase) {
-          console.log(`Duplicate entry skipped for CNR: ${cnrNumber}`);
+          // console.log(`Duplicate entry skipped for CNR: ${cnrNumber}`);
           successful++;
           continue;
         }
@@ -97,7 +97,7 @@ const fetchCaseDetailsAndSave = async (cnrNumber) => {
         if (!existingCase) {
           await Case.create({ cnrNumber, caseDetails });
         } else {
-          console.log(`Duplicate entry skipped for CNR: ${cnrNumber}`);
+          // console.log(`Duplicate entry skipped for CNR: ${cnrNumber}`);
         }
       } else {
         console.error(`No case details found for CNR: ${cnrNumber}`);

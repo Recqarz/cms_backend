@@ -28,7 +28,7 @@ function truncateNamesWithCount(names, maxNames = 2) {
 }
 
 async function sendReminderEmails({ checkForDaysBefore = [] }) {
-  console.log(`Preparing to send reminder emails...`);
+  // console.log(`Preparing to send reminder emails...`);
 
   try {
     // Fetch all cases with user data populated
@@ -73,19 +73,19 @@ async function sendReminderEmails({ checkForDaysBefore = [] }) {
       const daysBeforeHearing = checkForDaysBefore.map((day) =>
         nextHearingDate.clone().subtract(day, "days").format("YYYY-MM-DD")
       );
-      console.log(
-        `Checking Case ${cnrNumber} for days before hearing:`,
-        daysBeforeHearing,
-        "Today:",
-        now.format("YYYY-MM-DD")
-      );
+      // console.log(
+      //   `Checking Case ${cnrNumber} for days before hearing:`,
+      //   daysBeforeHearing,
+      //   "Today:",
+      //   now.format("YYYY-MM-DD")
+      // );
 
       // Only send the email if today is in the days before the hearing or if today is the hearing day
       if (
         !daysBeforeHearing.includes(now.format("YYYY-MM-DD")) &&
         !now.isSame(nextHearingDate, "day")
       ) {
-        console.log(`SearchCase ${cnrNumber} skipped: Not the correct day before the hearing.`);
+        // console.log(`SearchCase ${cnrNumber} skipped: Not the correct day before the hearing.`);
         continue;
       }
 
@@ -107,7 +107,7 @@ async function sendReminderEmails({ checkForDaysBefore = [] }) {
       const subject = `NDOH ${truncatedPetitionerNames} vs ${truncatedRespondentNames}`;
 
       // Log the subject to console
-      console.log(`Subject for Case ${cnrNumber}:`, subject);
+      // console.log(`Subject for Case ${cnrNumber}:`, subject);
 
       // Construct the HTML email content
       const emailText = `
@@ -204,12 +204,12 @@ async function sendReminderEmails({ checkForDaysBefore = [] }) {
         html: emailText, // Use HTML content
       };
 
-      console.log(`Dynamic CC emails for Case ${cnrNumber}:`, ccEmailsDynamic);
+      // console.log(`Dynamic CC emails for Case ${cnrNumber}:`, ccEmailsDynamic);
 
       // Send the email
       try {
         await sgMail.send(msg);
-        console.log(`Reminder email sent to ${email}`);
+        // console.log(`Reminder email sent to ${email}`);
       } catch (error) {
         console.error(`Error sending email to ${email}:`, error);
       }

@@ -26,7 +26,7 @@ getAllCnrDetails.get("/getCnrDetails/:userID", async(req, res) => {
           }        
 
     }catch(err){
-        console.log("err:", err)
+        // console.log("err:", err)
         res.status(500).json({status: false, message:"Internal server error", err:err.message})
     }
 })

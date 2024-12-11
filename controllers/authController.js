@@ -46,7 +46,7 @@ const sendOtp = expressAsyncHandler(async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ success: true, message: "OTP sent successfully." });
   } catch (error) {
-    console.log("Error sending email:", error);
+    // console.log("Error sending email:", error);
     res.status(500).json({ success: false, message: "Failed to send OTP." });
   }
 });
@@ -114,7 +114,7 @@ const generateToken = (id) => {
 const login = expressAsyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("email:", email, password)
+  // console.log("email:", email, password)
 
   const user = await User.findOne({ email });
   if (!user) {
@@ -147,7 +147,7 @@ const login = expressAsyncHandler(async (req, res) => {
 });
 
 const validateToken = expressAsyncHandler(async (req, res) => {
-  console.log('Validation request received');  // Debug log
+  // console.log('Validation request received');  // Debug log
   const token = req.cookies.authToken;
   if (!token) {
     return res.status(401).json({ success: false, message: 'No token provided' });

@@ -13,7 +13,7 @@ const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
 
 // Function to send WhatsApp reminders
 async function sendWhatsAppReminders(timeType) {
-  console.log(`Running Cron Job for WhatsApp ${timeType} reminders...`);
+  // console.log(`Running Cron Job for WhatsApp ${timeType} reminders...`);
 
   try {
     const cases = await Case.find().populate("userId", "email name number");
@@ -68,7 +68,7 @@ async function sendWhatsAppReminders(timeType) {
             to: `whatsapp:${number}`,
             body: messageText,
           });
-          console.log(`WhatsApp reminder sent to ${number}`);
+          // console.log(`WhatsApp reminder sent to ${number}`);
         } catch (error) {
           console.error(
             `Error sending WhatsApp message to ${number}:`,
