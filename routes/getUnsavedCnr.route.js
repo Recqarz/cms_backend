@@ -193,7 +193,7 @@ const processUnsavedCnr = async () => {
 
 // Set up cron job to run every 2 hr
 cron.schedule("*/23 * * * *", async () => {
-  // console.log("Running cron job: processUnsavedCnr");
+  console.log("standard api running...");
   await processUnsavedCnr();
 });
 

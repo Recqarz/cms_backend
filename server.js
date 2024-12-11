@@ -45,7 +45,7 @@ app.use("/api", uploadCnrRoute)
 
 // Default route
 app.get('/api', (req, res) => {
-  res.send('Hello World!');
+  res.send('Hello World backend!');
 });
 
 const PORT = process.env.PORT || 5000;
