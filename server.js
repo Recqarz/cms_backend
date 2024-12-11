@@ -21,7 +21,7 @@ connectDB();
 const app = express();
 
 const corsOptions = {
-  origin: 'http://localhost:3005',  
+  origin: '*',  
   credentials: true, 
   optionSuccessStatus: 200,
 };
