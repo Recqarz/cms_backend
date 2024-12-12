@@ -122,7 +122,7 @@ const processUnsavedCnr = async () => {
     // Filter `unSaveCnrNumber` to get only those not in `updatedCnrNumbers`
     const filteredCnrNumbers = unSaveCnrNumber
       .filter(item => !updatedCnrNumbers.has(item.cnrNumber))
-      .slice(0, 2); // Limit the result to 5 items
+      .slice(0, 10); // Limit the result to 5 items
 
     // console.log("filteredCnrNumbers-----", filteredCnrNumbers);
 
