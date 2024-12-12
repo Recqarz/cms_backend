@@ -10,7 +10,10 @@ require('./utils/scrapingCron');
 require('./utils/emailReminder'); 
 
 const cors = require('cors');
-const cookieParser = require('cookie-parser');  
+const cookieParser = require('cookie-parser'); 
+const morgan = require('morgan'); // Morgan for logging
+const fs = require('fs'); // File system to write logs to a file
+const path = require('path'); 
 const { crawlerRoute } = require('./routes/crawler.js');
 const getAllCnrDetails = require('./routes/getCnrDetails.route.js');
 const getUnsavedCnrRoute = require('./routes/getUnsavedCnr.route.js');
@@ -29,6 +32,14 @@ const corsOptions = {
 app.use(cors(corsOptions));  // Apply CORS configuration
 app.use(express.json()); // Body parser
 app.use(cookieParser());  // Use cookie-parser middleware
+
+const logStream = fs.createWriteStream(path.join(__dirname, 'access.log'), {
+  flags: 'a', // Append mode
+});
+
+// Use morgan middleware
+app.use(morgan('combined', { stream: logStream })); // Logs to file
+app.use(morgan('dev'));
 
 // API Routes
 app.use('/api/email', authRoutes); // Authentication related routes
@@ -50,5 +61,5 @@ app.get('/api', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  // console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

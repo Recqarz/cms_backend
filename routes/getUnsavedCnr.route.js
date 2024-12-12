@@ -4,9 +4,12 @@ const updateCnrData = require("../models/updateCnrData");
 // const { getCaseDetailsProcess } = require("../utils/getCaseDetailsProcess");
 const cron = require("node-cron");
 const cnrDetailsCollection = require("../models/cnrDetailsSchema");
-require("dotenv").config()
-const getUnsavedCnrRoute = express.Router();
 const axios = require("axios")
+
+require("dotenv").config()
+const logger = require("../utils/logger");
+
+const getUnsavedCnrRoute = express.Router();
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -23,13 +26,15 @@ const processCnrNumbers = async (
     let userIDs = el.userIDs;
     let attempt = 0;
     let success = false;
-    let response;
+    // let response;
 
     // console.log(`Processing CNR number: ${cnrNumber}`);
+    logger.info(`Processing CNR number: ${cnrNumber}`);
 
     while (attempt < maxRetries && !success) {
       attempt += 1;
       // console.log(`Attempt ${attempt} for CNR number: ${cnrNumber}`);
+      logger.info(`Attempt ${attempt} for CNR number: ${cnrNumber}`);
 
       try {
         // response = await getCaseDetailsProcess(cnrNumber);
@@ -37,11 +42,16 @@ const processCnrNumbers = async (
         // console.log("apiUrl:", apiUrl)
       const payload = { cnr_number: cnrNumber };
 
-      let caseData = await axios.post(apiUrl, payload);
+      let caseData = await axios.post(apiUrl, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
 
-      response = caseData.data
+      let response = caseData.data
       // console.log("response standard api:", response)
+      logger.info(`response standard api:- ${JSON.stringify(response)}`);
 
 
         if (response.status === true) {
@@ -53,18 +63,30 @@ const processCnrNumbers = async (
           results.push(modifiedResult);
           success = true;
         } else {
-          console.error(
-            `Failed attempt ${attempt} for CNR number: ${cnrNumber}. Retrying after ${
-              delayMs / 1000
-            } seconds...`
+
+          if(response?.status === false && response?.message == "doesNotExists"){
+            let needToDeleteCnr = response.cnr_number;
+            let deletedCnr = await UnsaveCnrCollection.findOneAndDelete({cnrNumber: needToDeleteCnr})
+            // console.log("deleteCnr ?", deletedCnr)
+            logger.warn(`Deleted non-existent CNR: ${needToDeleteCnr}`);
+          }
+
+          // console.error(
+          //   `Failed attempt ${attempt} for CNR number: ${cnrNumber}. Retrying after ${
+          //     delayMs / 1000
+          //   } seconds...`
+          // );
+          logger.error(
+            `Error processing CNR number: ${cnrNumber} on attempt ${attempt}: ${
+              err.response ? err.response.data : err.message
+            }`
           );
           await delay(delayMs); // Delay before retrying
         }
       } catch (err) {
-        console.error(
-          `Error processing CNR number: ${cnrNumber} on attempt ${attempt}:`,
-          err.message
-        );
+        // console.error(`Error processing CNR number: ${cnrNumber} on attempt ${attempt}:`, err.response ? err.response.data : err.message);
+        logger.error(`Error processing CNR number: ${cnrNumber} on attempt ${attempt}:`, err.response ? err.response.data : err.message);
+
         await delay(delayMs); // Delay before retrying
       }
 
@@ -90,29 +112,13 @@ const processCnrNumbers = async (
       await delay(delayMs); // Delay before moving to the next CNR number
     }
   }
+  logger.info(`Final Results: ${JSON.stringify(results)}`);
 
   return results;
 };
 
 const processUnsavedCnr = async () => {
   try {
-    // const unSaveCnrNumber = await UnsaveCnrCollection.find({ status: false }).limit(1);
-    // console.log("unSavedCnrNumber", unSaveCnrNumber);
-    // if(unSaveCnrNumber.length === 0 ){
-    //   return {status: true, message:"Not found any unSaved CNR Number !"}
-    // }
-
-    // const haveToUpdateCnrDetails = await updateCnrData.find();
-
-    // const updatedCnrNumbers = haveToUpdateCnrDetails.map(
-    //   (item) => item.cnrNumber
-    // );
-
-    // const filteredCnrNumbers = unSaveCnrNumber.filter(
-    //   (item) => !updatedCnrNumbers.includes(item.cnrNumber)
-    // );
-
-
     const haveToUpdateCnrDetails = await updateCnrData.find();
     const unSaveCnrNumber = await UnsaveCnrCollection.find({ status: false });
 
@@ -122,7 +128,7 @@ const processUnsavedCnr = async () => {
     // Filter `unSaveCnrNumber` to get only those not in `updatedCnrNumbers`
     const filteredCnrNumbers = unSaveCnrNumber
       .filter(item => !updatedCnrNumbers.has(item.cnrNumber))
-      .slice(0, 10); // Limit the result to 5 items
+      .slice(0, 4); // Limit the result to 5 items
 
     // console.log("filteredCnrNumbers-----", filteredCnrNumbers);
 
@@ -192,14 +198,17 @@ const processUnsavedCnr = async () => {
 };
 
 // Set up cron job to run every 2 hr
-cron.schedule("*/23 * * * *", async () => {
-  console.log("standard api running...");
+cron.schedule("*/8 * * * *", async () => {
+  logger.info("Cron job started for processing unsaved CNRs.");
+  // console.log("standard api running...");
   await processUnsavedCnr();
 });
 
 getUnsavedCnrRoute.get("/unSavedCnr", async (req, res) => {
   try {
     let response = await processUnsavedCnr();
+  logger.info(`Final Results: ${JSON.stringify(response)}`);
+
     res.status(200).json({ response });
   } catch (err) {
     res.status(500).json({ status: false, err: err.message });
