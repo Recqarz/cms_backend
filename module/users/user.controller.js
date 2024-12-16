@@ -1,0 +1,289 @@
+import dotenv from "dotenv";
+dotenv.config();
+import jwt from "jsonwebtoken";
+import argon2 from "argon2";
+import { User } from "./user.model.js";
+import { sendSmsToRecipient } from "./otpservice/sms.service.js";
+import { sendOtptoEmail } from "./otpservice/email.service.js";
+import { otpGenerator } from "../../otpGenerator/otpGenerator.js";
+
+const tempStorage = [];
+const loginTempUser = [];
+
+export const tempRegister = async (req, res) => {
+  const {
+    email,
+    mobile,
+    name,
+    password,
+    confirmPassword,
+    role,
+    state,
+    district,
+    pinCode,
+    address,
+    ...rest
+  } = req.body;
+  if (!email || !mobile) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Email and mobile are required." });
+  }
+
+  if (password !== confirmPassword) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Passwords do not match." });
+  }
+
+  if (
+    !name ||
+    !password ||
+    !confirmPassword ||
+    !role ||
+    !state ||
+    !district ||
+    !pinCode ||
+    !address
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "All fields are required." });
+  }
+
+  const user = await User.findOne({ email: email, mobile: mobile });
+  if (user) {
+    return res
+      .status(400)
+      .json({ success: false, message: "User already exists." });
+  }
+  const mobileOtp = otpGenerator();
+  const emailOtp = otpGenerator();
+  const text = `Your OTP for Sandhee Platform is ${mobileOtp.otp}. It is valid for 5 minutes. Please do not share it with anyone. Team SANDHEE (RecQARZ)`;
+  sendSmsToRecipient(mobile, text);
+  let emailuser = {
+    otp: emailOtp.otp,
+    email: email,
+    name: name,
+  };
+  sendOtptoEmail(emailuser, emailOtp.otp);
+  const userIndex = tempStorage.findIndex(
+    (item) => item.email === email || item.mobile === mobile
+  );
+
+  if (userIndex !== -1) {
+    tempStorage[userIndex] = {
+      ...tempStorage[userIndex],
+      email,
+      mobile,
+      name,
+      password,
+      confirmPassword,
+      role,
+      state,
+      district,
+      pinCode,
+      address,
+      ...rest,
+    };
+    tempStorage[userIndex].mobileOtp = mobileOtp;
+    tempStorage[userIndex].emailOtp = emailOtp;
+    return res.status(201).json({
+      success: true,
+      message: "User Updated to temp storage.",
+    });
+  } else {
+    const newUser = {
+      email,
+      mobile,
+      name,
+      password,
+      confirmPassword,
+      role,
+      state,
+      district,
+      pinCode,
+      address,
+      ...rest,
+    };
+    newUser.mobileOtp = mobileOtp;
+    newUser.emailOtp = emailOtp;
+    tempStorage.push(newUser);
+    return res.status(201).json({
+      success: true,
+      message: "User added to temp storage.",
+    });
+  }
+};
+
+export const register = async (req, res) => {
+  const { email, mobileOtp, emailOtp } = req.body;
+  if (!email || !mobileOtp || !emailOtp) {
+    return res.status(400).json({
+      success: false,
+      message: "Email, mobile OTP and email OTP are required.",
+    });
+  }
+  try {
+    const user = await User.findOne({ email: email });
+    if (user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User already exists." });
+    }
+    const tempUser = tempStorage.filter((user) => user.email === email);
+    if (tempUser.length > 0) {
+      if (
+        tempUser[0].mobileOtp.otp !== mobileOtp ||
+        tempUser[0].mobileOtp.expireTime < Date.now()
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid mobile OTP." });
+      }
+      if (
+        tempUser[0].emailOtp.otp !== emailOtp ||
+        tempUser[0].emailOtp.expireTime < Date.now()
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid email OTP." });
+      }
+      const hashedPassword = await argon2.hash(tempUser[0].password);
+      const {
+        mobileOtp: _,
+        emailOtp: emailVerification,
+        ...userData
+      } = tempUser[0];
+      const newUser = new User({
+        ...userData,
+        password: hashedPassword,
+      });
+      await newUser.save();
+      return res.status(201).json({
+        success: true,
+        message: "User registered successfully.",
+        data: newUser,
+      });
+    } else {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found in temp storage." });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+export const tempLogin = async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Email and password are required." });
+  }
+  try {
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found." });
+    }
+    const isMatch = await argon2.verify(user.password, password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Incorrect password." });
+    }
+    const mobileOtp = otpGenerator();
+    const emailOtp = otpGenerator();
+    const text = `Your OTP for Sandhee Platform is ${mobileOtp.otp}. It is valid for 5 minutes. Please do not share it with anyone. Team SANDHEE (RecQARZ)`;
+    sendSmsToRecipient(user.mobile, text);
+    sendOtptoEmail(user, emailOtp.otp);
+    const nuser = { ...user.toObject(), mobileOtp, emailOtp };
+    loginTempUser.push(nuser);
+    return res.status(200).json({
+      success: true,
+      message: "OTP send successfully.",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+export const login = async (req, res) => {
+  const { email, mobileOtp, emailOtp } = req.body;
+  if (!email || !mobileOtp || !emailOtp) {
+    return res.status(400).json({
+      success: false,
+      message: "Email, mobile OTP and email OTP are required.",
+    });
+  }
+  try {
+    const tempUser = loginTempUser.filter((user) => user.email === email);
+    if (tempUser.length > 0) {
+      if (
+        tempUser[0].mobileOtp.otp !== mobileOtp ||
+        tempUser[0].mobileOtp.expireTime < Date.now()
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid mobile OTP." });
+      }
+      if (
+        tempUser[0].emailOtp.otp !== emailOtp ||
+        tempUser[0].emailOtp.expireTime < Date.now()
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid email OTP." });
+      }
+
+      // Now find the user in the actual database
+      const user = await User.findOne({ email: email });
+      if (!user) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User not found in database." });
+      }
+
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, {
+        expiresIn: "1d",
+      });
+      return res.status(200).json({
+        success: true,
+        message: "User logged in successfully.",
+        token,
+        role: user.role,
+      });
+    } else {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found in temp storage." });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+export const cleanUpTempStorage = () => {
+  tempStorage.forEach((user, index) => {
+    if (
+      user.emailOtp.expireTime < Date.now() ||
+      user.mobileOtp.expireTime < Date.now()
+    ) {
+      tempStorage.splice(index, 1);
+    }
+  });
+  loginTempUser.forEach((user, index) => {
+    if (
+      user.emailOtp.expireTime < Date.now() ||
+      user.mobileOtp.expireTime < Date.now()
+    ) {
+      loginTempUser.splice(index, 1);
+    }
+  });
+};
