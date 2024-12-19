@@ -6,7 +6,7 @@ const cnrSchema = new mongoose.Schema({
     required: true,
   },
   userId: {
-    type: [String],
+    type: [],
     default: [],
   },
   acts: {
@@ -14,7 +14,7 @@ const cnrSchema = new mongoose.Schema({
     default: [],
   },
   subUserId: {
-    type: [String],
+    type: [],
     default: [],
   },
   caseDetails: {
@@ -26,8 +26,8 @@ const cnrSchema = new mongoose.Schema({
     default: [],
   },
   caseStatus: {
-    type: String,
-    default: "",
+    type: [],
+    default: [],
   },
   caseTransferDetails: {
     type: [],
@@ -52,6 +52,10 @@ const cnrSchema = new mongoose.Schema({
   archive: {
     type: [],
     default: [],
+  },
+  status: {
+    type: String,
+    default: "",
   },
 });
 

@@ -293,11 +293,12 @@ export const login = async (req, res) => {
         message: "User logged in successfully.",
         token: tokens,
         role: user.role,
+        name: user.name,
       });
     } else {
       return res
         .status(400)
-        .json({ success: false, message: "User not found in temp storage." });
+        .json({ success: false, message: "Please send otp first." });
     }
   } catch (error) {
     console.error(error);

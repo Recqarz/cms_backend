@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["advocate", "client", "company", "bank", "individual","subuser"],
+    enum: ["advocate", "client", "company", "bank", "individual", "subuser"],
     default: "client",
   },
   isPrimeUser: {
