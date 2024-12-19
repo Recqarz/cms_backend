@@ -100,10 +100,17 @@ export const dataUpdater = async () => {
 
           const data = await response.json();
 
-          if (data.error === "This Case Code does not exists") {
+          if (data.error === "Invalid_cnr") {
             await LocalCnr.findOneAndUpdate(
               { cnr_number: cnr },
               { status: "invalidcnr" }
+            );
+            return;
+          }
+          if (data.error === "Diffrent_format") {
+            await LocalCnr.findOneAndUpdate(
+              { cnr_number: cnr },
+              { status: "Diffrent_format" }
             );
             return;
           }
@@ -137,26 +144,10 @@ export const dataUpdater = async () => {
           }
         } catch (error) {
           console.error(`Error fetching data for CNR ${cnr}:`, error);
-
-          if (error.error === "This Case Code does not exists") {
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: cnr },
-              { status: "invalid" }
-            );
-          } else if (
-            error.error ===
-            "An unexpected error occurred. Please try again later."
-          ) {
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: cnr },
-              { status: "differentformat" }
-            );
-          } else {
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: cnr },
-              { status: "wrong" }
-            );
-          }
+          await LocalCnr.findOneAndUpdate(
+            { cnr_number: cnr },
+            { status: "wrong" }
+          );
         } finally {
           dataQueue.removeFromCurrentlyProcessing(cnr);
         }
