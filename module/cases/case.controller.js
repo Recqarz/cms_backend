@@ -48,6 +48,49 @@ export const getCnrDetails = async (req, res) => {
   }
 };
 
+export const getUnsavedCnrDetails = async (req, res) => {
+  const { token } = req.headers;
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized: Token is missing." });
+  }
+  try {
+    const isVerify = jwt.verify(
+      token?.split(" ")[1],
+      process.env.JWT_SECRET_KEY
+    );
+    if (!isVerify) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized: Invalid token." });
+    }
+    const unsavedCnr = await UnsavedCnr.find({
+      userId: { $elemMatch: { userId: isVerify.id } },
+    });
+    if (!unsavedCnr) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No unsaved Cnr details found." });
+    }
+    const ndatas = unsavedCnr.map((ele) => {
+      return {
+        cnr: ele.cnrNumber,
+        status: ele.status,
+        date: new Date(ele.createdAt).toISOString().split("T")[0]
+      };
+    });
+    return res.status(200).json({
+      success: true,
+      data: ndatas,
+      message: "Unsaved Cnr details found.",
+    });
+  } catch (error) {
+    console.error("Error getting unsaved Cnr details:", error.message);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
 export const AddNewSingleCnr = async (req, res) => {
   const { token } = req.headers;
   if (!token) {
