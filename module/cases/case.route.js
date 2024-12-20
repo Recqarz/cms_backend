@@ -3,6 +3,7 @@ import {
   AddNewBulkCnr,
   AddNewSingleCnr,
   getCnrDetails,
+  getSingleCnr,
 } from "./case.controller.js";
 import multer from "multer";
 import path from "path";
@@ -45,6 +46,8 @@ const asyncHandler = (fn) => (req, res, next) => {
 cnrRoute.get("/get-cnr", asyncHandler(getCnrDetails));
 
 cnrRoute.post("/addnew-singlecnr", asyncHandler(AddNewSingleCnr));
+
+cnrRoute.get("/get-singlecnr/:cnrNumber", getSingleCnr);
 
 cnrRoute.post(
   "/addnew-bulkcnr",
