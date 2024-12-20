@@ -9,10 +9,10 @@ const ExternalUserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  noOfAssigncases:{
+  noOfAssigncases: {
     type: Number,
     default: 0,
-  }
+  },
 });
 
 export const ExternalUser = mongoose.model("ExternalUser", ExternalUserSchema);

@@ -3,8 +3,6 @@ dotenv.config();
 import jwt from "jsonwebtoken";
 import { CnrDetail } from "./case.model.js";
 import { UnsavedCnr } from "./unSavedCnr/unSavedCnr.js";
-import multer from "multer";
-import path from "path";
 import fs from "fs";
 import xlsx from "xlsx";
 import { ExternalUser } from "../externalUser/externaluser.model.js";
@@ -50,6 +48,49 @@ export const getCnrDetails = async (req, res) => {
   }
 };
 
+export const getUnsavedCnrDetails = async (req, res) => {
+  const { token } = req.headers;
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized: Token is missing." });
+  }
+  try {
+    const isVerify = jwt.verify(
+      token?.split(" ")[1],
+      process.env.JWT_SECRET_KEY
+    );
+    if (!isVerify) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized: Invalid token." });
+    }
+    const unsavedCnr = await UnsavedCnr.find({
+      userId: { $elemMatch: { userId: isVerify.id } },
+    });
+    if (!unsavedCnr) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No unsaved Cnr details found." });
+    }
+    const ndatas = unsavedCnr.map((ele) => {
+      return {
+        cnr: ele.cnrNumber,
+        status: ele.status,
+        date: new Date(ele.createdAt).toISOString().split("T")[0]
+      };
+    });
+    return res.status(200).json({
+      success: true,
+      data: ndatas,
+      message: "Unsaved Cnr details found.",
+    });
+  } catch (error) {
+    console.error("Error getting unsaved Cnr details:", error.message);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
 export const AddNewSingleCnr = async (req, res) => {
   const { token } = req.headers;
   if (!token) {
@@ -59,36 +100,30 @@ export const AddNewSingleCnr = async (req, res) => {
   }
   const { cnrNumber, externalUserName, externalUserId } = req.body;
   if (!cnrNumber || !externalUserName || !externalUserId) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message:
-          "Missing required fields: cnrNumber, externalUserName, and externalUserId are required.",
-      });
+    return res.status(400).json({
+      success: false,
+      message:
+        "Missing required fields: cnrNumber, externalUserName, and externalUserId are required.",
+    });
   }
   try {
     const tokenParts = token.split(" ");
     if (tokenParts.length !== 2 || tokenParts[0] !== "Bearer") {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "Unauthorized: Invalid token format.",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Invalid token format.",
+      });
     }
     const decodedToken = jwt.verify(tokenParts[1], process.env.JWT_SECRET_KEY);
     if (!decodedToken) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "Unauthorized: Token verification failed.",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Token verification failed.",
+      });
     }
     const userId = decodedToken.id;
     if (cnrNumber.length !== 16) {
-      const newCnr = new CnrDetail({
+      const newCnr = new UnsavedCnr({
         cnrNumber,
         userId: [{ userId, externalUserName, externalUserId }],
         status: "invalidcnr",
@@ -121,6 +156,14 @@ export const AddNewSingleCnr = async (req, res) => {
     }
     const unsavedCnr = await UnsavedCnr.findOne({ cnrNumber });
     if (unsavedCnr) {
+      const userCnrExistss = unsavedCnr.userId.some(
+        (user) => user.userId === userId
+      );
+      if (userCnrExistss) {
+        return res
+          .status(409)
+          .json({ success: false, message: "Already assigned CNR." });
+      }
       unsavedCnr.userId.push({ userId, externalUserName, externalUserId });
       unsavedCnr.status = "priority";
       await unsavedCnr.save();
@@ -129,7 +172,7 @@ export const AddNewSingleCnr = async (req, res) => {
         message: "CNR details will be available shortly.",
       });
     }
-    const newCnr = new CnrDetail({
+    const newCnr = new UnsavedCnr({
       cnrNumber,
       userId: [{ userId, externalUserName, externalUserId }],
       status: "priority",
@@ -141,30 +184,51 @@ export const AddNewSingleCnr = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding new CNR details:", error.message);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error occurred while processing the request.",
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Server error occurred while processing the request.",
+    });
   }
 };
 
 export const AddNewBulkCnr = async (req, res) => {
-  const { userId, externalUserName, externalUserId } = req.body;
+  const { token } = req.headers;
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized: Token is missing." });
+  }
+  const { externalUserName, externalUserId } = req.body;
   if (!req.file) {
     fs.unlinkSync(req.file.path);
     return res
       .status(400)
       .json({ success: false, message: "No file uploaded." });
   }
-  if (!userId || !externalUserId || !externalUserName) {
+  if (!externalUserId || !externalUserName) {
     fs.unlinkSync(req.file.path);
     return res
       .status(400)
       .json({ success: false, message: "Missing required fields." });
   }
   try {
+    const tokenParts = token.split(" ");
+    if (tokenParts.length !== 2 || tokenParts[0] !== "Bearer") {
+      fs.unlinkSync(req.file.path);
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Invalid token format.",
+      });
+    }
+    const decodedToken = jwt.verify(tokenParts[1], process.env.JWT_SECRET_KEY);
+    if (!decodedToken) {
+      fs.unlinkSync(req.file.path);
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Token verification failed.",
+      });
+    }
+    const userId = decodedToken.id;
     const workbook = xlsx.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -177,7 +241,7 @@ export const AddNewBulkCnr = async (req, res) => {
     for (let i = 0; i < cnrData.length; i++) {
       const cnrNumber = cnrData[i]?.cnrNumber;
       if (cnrNumber.length !== 16) {
-        const newCnr = new CnrDetail({
+        const newCnr = new UnsavedCnr({
           cnrNumber,
           userId: [{ userId, externalUserName, externalUserId }],
           status: "invalidcnr",
@@ -185,7 +249,7 @@ export const AddNewBulkCnr = async (req, res) => {
         await newCnr.save();
         continue;
       }
-      const cnrDetail = await cnrDetail.findOne({ cnrNumber: cnrNumber });
+      const cnrDetail = await CnrDetail.findOne({ cnrNumber: cnrNumber });
       if (cnrDetail) {
         let obj = {
           userId: userId,
@@ -205,7 +269,7 @@ export const AddNewBulkCnr = async (req, res) => {
           newCnrDetail.status = "pending";
           await newCnrDetail.save();
         } else {
-          const newCnr = new CnrDetail({
+          const newCnr = new UnsavedCnr({
             cnrNumber,
             userId: [{ userId, externalUserName, externalUserId }],
             status: "pending",

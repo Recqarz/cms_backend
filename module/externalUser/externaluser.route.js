@@ -3,6 +3,6 @@ import { addExternaluser, getExternalUser } from "./externaluser.controller.js";
 
 export const externalUserRoute = Router();
 
-externalUserRoute.post("/add-external-user", addExternaluser)
+externalUserRoute.post("/add-external-user", addExternaluser);
 
-externalUserRoute.get("/get-external-user", getExternalUser)
+externalUserRoute.get("/get-external-user", getExternalUser);

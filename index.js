@@ -6,6 +6,7 @@ import { allRoutes } from "./global/allRoutes.js";
 import { connection } from "./config/db.connection.js";
 import cron from "node-cron";
 import { dataUpdater } from "./crons/cronjob.js";
+import { cleanUpTempResetStorageofall } from "./module/users/cronJob/cronJob.js";
 
 const app = express();
 
@@ -21,11 +22,13 @@ app.use("/api", allRoutes);
 
 const port = process.env.PORT;
 
-cron.schedule("*/10 * * * *", () => {
-  dataUpdater();
-  console.log("running a task every ten minute");
-});
-dataUpdater();
+// cron.schedule("*/10 * * * *", () => {
+//   dataUpdater();
+//   console.log("running a task every ten minute");
+// });
+// dataUpdater();
+
+cleanUpTempResetStorageofall();
 
 app.listen(port, async () => {
   console.log(`server is running on port ${port}`);

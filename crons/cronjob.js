@@ -1,5 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
 import fetch from "node-fetch";
 import { UnsavedCnr } from "../module/cases/unSavedCnr/unSavedCnr.js";
+import { CnrDetail } from "../module/cases/case.model.js";
 
 class DataQueue {
   constructor() {
@@ -62,7 +65,7 @@ export const dataUpdater = async () => {
       console.log("No pending cases found.");
       return;
     }
-
+    // -----------
     pendingCases.forEach((caseItem) => {
       const cnr = caseItem.cnrNumber;
       if (dataQueue.isAlreadyProcessing(cnr)) {
@@ -77,39 +80,40 @@ export const dataUpdater = async () => {
           const caseExists = await CnrDetail.findOne({ cnrNumber: cnr });
 
           if (caseExists) {
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: cnr },
+            await UnsavedCnr.findOneAndUpdate(
+              { cnrNumber: cnr },
               { status: "alreadyprocessed" }
             );
             console.log("Case exists, skipping:", cnr);
+            caseItem.userId.map((ele) => {
+              caseExists.userId.push(ele);
+            });
+            await caseExists.save();
             return;
           }
 
           const obj = { cnr_number: cnr };
-
-          const response = await fetch(
-            "http://127.0.0.1:5000////get_case_details_status",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(obj),
-            }
-          );
+          let url = process.env.PYTHON_API_URL;
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(obj),
+          });
 
           const data = await response.json();
 
           if (data.error === "Invalid_cnr") {
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: cnr },
+            await UnsavedCnr.findOneAndUpdate(
+              { cnrNumber: cnr },
               { status: "invalidcnr" }
             );
             return;
           }
           if (data.error === "Diffrent_format") {
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: cnr },
+            await UnsavedCnr.findOneAndUpdate(
+              { cnrNumber: cnr },
               { status: "Diffrent_format" }
             );
             return;
@@ -135,17 +139,18 @@ export const dataUpdater = async () => {
               petitionerAndAdvocate: data["Petitioner and Advocate"] || [],
               respondentAndAdvocate: data["Respondent and Advocate"] || [],
               intrimOrders: nseurl || [],
+              userId: caseItem.userId,
             });
 
-            await LocalCnr.findOneAndUpdate(
-              { cnr_number: data?.cnr_number },
+            await UnsavedCnr.findOneAndUpdate(
+              { cnrNumber: data?.cnr_number },
               { status: "processed" }
             );
           }
         } catch (error) {
           console.error(`Error fetching data for CNR ${cnr}:`, error);
-          await LocalCnr.findOneAndUpdate(
-            { cnr_number: cnr },
+          await UnsavedCnr.findOneAndUpdate(
+            { cnrNumber: cnr },
             { status: "wrong" }
           );
         } finally {
