@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import fetch from "node-fetch";
 import { UnsavedCnr } from "../module/cases/unSavedCnr/unSavedCnr.js";
 import { CnrDetail } from "../module/cases/case.model.js";
@@ -91,17 +93,14 @@ export const dataUpdater = async () => {
           }
 
           const obj = { cnr_number: cnr };
-
-          const response = await fetch(
-            "http://127.0.0.1:5000////get_case_details_status",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(obj),
-            }
-          );
+          let url = process.env.PYTHON_API_URL;
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(obj),
+          });
 
           const data = await response.json();
 

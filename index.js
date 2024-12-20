@@ -22,11 +22,11 @@ app.use("/api", allRoutes);
 
 const port = process.env.PORT;
 
-cron.schedule("*/10 * * * *", () => {
-  dataUpdater();
-  console.log("running a task every ten minute");
-});
-dataUpdater();
+// cron.schedule("*/10 * * * *", () => {
+//   dataUpdater();
+//   console.log("running a task every ten minute");
+// });
+// dataUpdater();
 
 cleanUpTempResetStorageofall();
 
