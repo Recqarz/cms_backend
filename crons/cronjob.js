@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import { UnsavedCnr } from "../module/cases/unSavedCnr/unSavedCnr.js";
+import { CnrDetail } from "../module/cases/case.model.js";
 
 class DataQueue {
   constructor() {
@@ -77,7 +78,7 @@ export const dataUpdater = async () => {
           const caseExists = await CnrDetail.findOne({ cnrNumber: cnr });
 
           if (caseExists) {
-            await LocalCnr.findOneAndUpdate(
+            await UnsavedCnr.findOneAndUpdate(
               { cnr_number: cnr },
               { status: "alreadyprocessed" }
             );
@@ -101,14 +102,14 @@ export const dataUpdater = async () => {
           const data = await response.json();
 
           if (data.error === "Invalid_cnr") {
-            await LocalCnr.findOneAndUpdate(
+            await UnsavedCnr.findOneAndUpdate(
               { cnr_number: cnr },
               { status: "invalidcnr" }
             );
             return;
           }
           if (data.error === "Diffrent_format") {
-            await LocalCnr.findOneAndUpdate(
+            await UnsavedCnr.findOneAndUpdate(
               { cnr_number: cnr },
               { status: "Diffrent_format" }
             );
@@ -137,14 +138,14 @@ export const dataUpdater = async () => {
               intrimOrders: nseurl || [],
             });
 
-            await LocalCnr.findOneAndUpdate(
+            await UnsavedCnr.findOneAndUpdate(
               { cnr_number: data?.cnr_number },
               { status: "processed" }
             );
           }
         } catch (error) {
           console.error(`Error fetching data for CNR ${cnr}:`, error);
-          await LocalCnr.findOneAndUpdate(
+          await UnsavedCnr.findOneAndUpdate(
             { cnr_number: cnr },
             { status: "wrong" }
           );
