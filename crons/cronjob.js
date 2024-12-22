@@ -65,12 +65,17 @@ export const dataUpdater = async () => {
       console.log("No pending cases found.");
       return;
     }
-    // -----------
-    pendingCases.forEach((caseItem) => {
+    for (const pendingCase of pendingCases) {
+      const cnr = pendingCase.cnrNumber;
+      const currCnr = await UnsavedCnr.findOne({ cnrNumber: cnr });
+      currCnr.status = "underProgress";
+      await currCnr.save();
+    }
+    for (const caseItem of pendingCases) {
       const cnr = caseItem.cnrNumber;
       if (dataQueue.isAlreadyProcessing(cnr)) {
         console.log("Skipping already processing CNR:", cnr);
-        return;
+        continue;
       }
 
       dataQueue.addToQueue(async () => {
@@ -85,8 +90,14 @@ export const dataUpdater = async () => {
               { status: "alreadyprocessed" }
             );
             console.log("Case exists, skipping:", cnr);
-            caseItem.userId.map((ele) => {
-              caseExists.userId.push(ele);
+            caseItem.userId.forEach((ele) => {
+              if (
+                !caseExists.userId.some(
+                  (existingUser) => existingUser.userId === ele.userId
+                )
+              ) {
+                caseExists.userId.push(ele);
+              }
             });
             await caseExists.save();
             return;
@@ -157,7 +168,7 @@ export const dataUpdater = async () => {
           dataQueue.removeFromCurrentlyProcessing(cnr);
         }
       });
-    });
+    }
   } catch (error) {
     console.error("Error in data updating cron job:", error);
   }

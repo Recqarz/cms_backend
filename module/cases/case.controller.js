@@ -77,7 +77,7 @@ export const getUnsavedCnrDetails = async (req, res) => {
       return {
         cnr: ele.cnrNumber,
         status: ele.status,
-        date: new Date(ele.createdAt).toISOString().split("T")[0]
+        date: new Date(ele.createdAt).toISOString().split("T")[0],
       };
     });
     return res.status(200).json({
@@ -98,7 +98,7 @@ export const AddNewSingleCnr = async (req, res) => {
       .status(401)
       .json({ success: false, message: "Unauthorized: Token is missing." });
   }
-  const { cnrNumber, externalUserName, externalUserId } = req.body;
+  const { cnrNumber, externalUserName, externalUserId, jointUser } = req.body;
   if (!cnrNumber || !externalUserName || !externalUserId) {
     return res.status(400).json({
       success: false,
@@ -108,12 +108,6 @@ export const AddNewSingleCnr = async (req, res) => {
   }
   try {
     const tokenParts = token.split(" ");
-    if (tokenParts.length !== 2 || tokenParts[0] !== "Bearer") {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token format.",
-      });
-    }
     const decodedToken = jwt.verify(tokenParts[1], process.env.JWT_SECRET_KEY);
     if (!decodedToken) {
       return res.status(401).json({
@@ -125,7 +119,7 @@ export const AddNewSingleCnr = async (req, res) => {
     if (cnrNumber.length !== 16) {
       const newCnr = new UnsavedCnr({
         cnrNumber,
-        userId: [{ userId, externalUserName, externalUserId }],
+        userId: [{ userId, externalUserName, externalUserId, jointUser }],
         status: "invalidcnr",
       });
       await newCnr.save();
@@ -143,7 +137,12 @@ export const AddNewSingleCnr = async (req, res) => {
           .status(409)
           .json({ success: false, message: "Already assigned CNR." });
       }
-      existingCnr.userId.push({ userId, externalUserName, externalUserId });
+      existingCnr.userId.push({
+        userId,
+        externalUserName,
+        externalUserId,
+        jointUser,
+      });
       await existingCnr.save();
       const externalUser = await ExternalUser.findById(externalUserId);
       if (externalUser) {
@@ -164,7 +163,12 @@ export const AddNewSingleCnr = async (req, res) => {
           .status(409)
           .json({ success: false, message: "Already assigned CNR." });
       }
-      unsavedCnr.userId.push({ userId, externalUserName, externalUserId });
+      unsavedCnr.userId.push({
+        userId,
+        externalUserName,
+        externalUserId,
+        jointUser,
+      });
       unsavedCnr.status = "priority";
       await unsavedCnr.save();
       return res.status(201).json({
@@ -174,7 +178,7 @@ export const AddNewSingleCnr = async (req, res) => {
     }
     const newCnr = new UnsavedCnr({
       cnrNumber,
-      userId: [{ userId, externalUserName, externalUserId }],
+      userId: [{ userId, externalUserName, externalUserId, jointUser }],
       status: "priority",
     });
     await newCnr.save();
@@ -213,13 +217,6 @@ export const AddNewBulkCnr = async (req, res) => {
   }
   try {
     const tokenParts = token.split(" ");
-    if (tokenParts.length !== 2 || tokenParts[0] !== "Bearer") {
-      fs.unlinkSync(req.file.path);
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token format.",
-      });
-    }
     const decodedToken = jwt.verify(tokenParts[1], process.env.JWT_SECRET_KEY);
     if (!decodedToken) {
       fs.unlinkSync(req.file.path);
@@ -233,45 +230,83 @@ export const AddNewBulkCnr = async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const cnrData = xlsx.utils.sheet_to_json(sheet);
-
     if (cnrData.length === 0) {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: "Excel file is empty" });
     }
     for (let i = 0; i < cnrData.length; i++) {
-      const cnrNumber = cnrData[i]?.cnrNumber;
+      const cnrNumber = cnrData[i]?.["CNR NO."];
+      if (!cnrNumber) {
+        continue;
+      }
+      const jointUser = [];
+      for (let j = 1; j <= 8; j++) {
+        const name = cnrData[i][`user${j}name`];
+        const email = cnrData[i][`user${j}email`];
+        const mobile = cnrData[i][`user${j}mobile`];
+        const dayBeforeNotification = parseInt(
+          cnrData[i][`user${j}daybeforenotification`] || 4
+        );
+
+        if (email || mobile) {
+          jointUser.push({
+            name: name || "",
+            email: email ? String(email) : "",
+            mobile: mobile ? String(mobile) : "",
+            dayBeforeNotification: Math.min(
+              parseInt(dayBeforeNotification) || 4,
+              4
+            ),
+          });
+        }
+      }
       if (cnrNumber.length !== 16) {
         const newCnr = new UnsavedCnr({
           cnrNumber,
-          userId: [{ userId, externalUserName, externalUserId }],
+          userId: [{ userId, externalUserName, externalUserId, jointUser }],
           status: "invalidcnr",
         });
         await newCnr.save();
         continue;
       }
+
       const cnrDetail = await CnrDetail.findOne({ cnrNumber: cnrNumber });
       if (cnrDetail) {
+        const userCnrExists = cnrDetail.userId.some(
+          (user) => user.userId === userId
+        );
+        if (userCnrExists) {
+          continue;
+        }
         let obj = {
           userId: userId,
           externalUserName: externalUserName,
           externalUserId: externalUserId,
+          jointUser,
         };
         cnrDetail.userId.push(obj);
         await cnrDetail.save();
       } else {
         const newCnrDetail = await UnsavedCnr.findOne({ cnrNumber: cnrNumber });
         if (newCnrDetail) {
+          const userCnrExistss = newCnrDetail.userId.some(
+            (user) => user.userId === userId
+          );
+          if (userCnrExistss) {
+            continue;
+          }
           newCnrDetail.userId.push({
             userId,
             externalUserName,
             externalUserId,
+            jointUser,
           });
           newCnrDetail.status = "pending";
           await newCnrDetail.save();
         } else {
           const newCnr = new UnsavedCnr({
             cnrNumber,
-            userId: [{ userId, externalUserName, externalUserId }],
+            userId: [{ userId, externalUserName, externalUserId, jointUser }],
             status: "pending",
           });
           await newCnr.save();
@@ -284,7 +319,7 @@ export const AddNewBulkCnr = async (req, res) => {
     fs.unlinkSync(req.file.path);
     return res
       .status(201)
-      .json({ success: true, message: "Cnr details is being processing." });
+      .json({ success: true, message: "Cnr details are being processing." });
   } catch (error) {
     console.error("Error adding new Cnr details:", error.message);
     return res.status(500).json({ success: false, message: "Server error." });
