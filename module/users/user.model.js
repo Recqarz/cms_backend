@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["advocate", "client", "company", "bank", "individual"],
+    enum: ["advocate", "client", "company", "bank", "individual", "subuser"],
     default: "client",
   },
   isPrimeUser: {
@@ -56,10 +56,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  address: {
-    type: String,
-    required: true,
-  },
   profilePic: {
     type: String,
     default: "",
@@ -85,7 +81,7 @@ const userSchema = new mongoose.Schema({
     default: "",
   },
   subUser: {
-    type: [Object],
+    type: [],
     default: [],
   },
   advocate: {
