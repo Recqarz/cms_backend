@@ -36,6 +36,17 @@ export const tempRegister = async (req, res) => {
       .json({ success: false, message: "Passwords do not match." });
   }
 
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Password should be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
+    });
+  }
+
   if (
     !name ||
     !password ||
@@ -90,7 +101,7 @@ export const tempRegister = async (req, res) => {
     tempStorage[userIndex].emailOtp = emailOtp;
     return res.status(201).json({
       success: true,
-      message: "User Updated to temp storage.",
+      message: "OTP sent successfully",
     });
   } else {
     const newUser = {
@@ -111,7 +122,7 @@ export const tempRegister = async (req, res) => {
     tempStorage.push(newUser);
     return res.status(201).json({
       success: true,
-      message: "User added to temp storage.",
+      message: "OTP sent successfully.",
     });
   }
 };
@@ -133,6 +144,16 @@ export const register = async (req, res) => {
     }
     const tempUser = tempStorage.filter((user) => user.email === email);
     if (tempUser.length > 0) {
+      if (
+        (tempUser[0].mobileOtp.otp !== mobileOtp ||
+          tempUser[0].mobileOtp.expireTime < Date.now()) &&
+        (tempUser[0].emailOtp.otp !== emailOtp ||
+          tempUser[0].emailOtp.expireTime < Date.now())
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid mobile and email OTP." });
+      }
       if (
         tempUser[0].mobileOtp.otp !== mobileOtp ||
         tempUser[0].mobileOtp.expireTime < Date.now()
@@ -201,8 +222,14 @@ export const tempLogin = async (req, res) => {
     const text = `Your OTP for Sandhee Platform is ${mobileOtp.otp}. It is valid for 5 minutes. Please do not share it with anyone. Team SANDHEE (RecQARZ)`;
     sendSmsToRecipient(user.mobile, text);
     sendOtptoEmail(user, emailOtp.otp);
-    const nuser = { ...user.toObject(), mobileOtp, emailOtp };
-    loginTempUser.push(nuser);
+    const existingUserIndex = loginTempUser.findIndex((u) => u.email === email);
+    if (existingUserIndex !== -1) {
+      loginTempUser[existingUserIndex].mobileOtp = mobileOtp;
+      loginTempUser[existingUserIndex].emailOtp = emailOtp;
+    } else {
+      const nuser = { ...user.toObject(), mobileOtp, emailOtp };
+      loginTempUser.push(nuser);
+    }
     return res.status(200).json({
       success: true,
       message: "OTP send successfully.",
@@ -225,6 +252,16 @@ export const login = async (req, res) => {
     const tempUser = loginTempUser.filter((user) => user.email === email);
     if (tempUser.length > 0) {
       if (
+        (tempUser[0].mobileOtp.otp !== mobileOtp ||
+          tempUser[0].mobileOtp.expireTime < Date.now()) &&
+        (tempUser[0].emailOtp.otp !== emailOtp ||
+          tempUser[0].emailOtp.expireTime < Date.now())
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid mobile and email OTP." });
+      }
+      if (
         tempUser[0].mobileOtp.otp !== mobileOtp ||
         tempUser[0].mobileOtp.expireTime < Date.now()
       ) {
@@ -240,8 +277,6 @@ export const login = async (req, res) => {
           .status(400)
           .json({ success: false, message: "Invalid email OTP." });
       }
-
-      // Now find the user in the actual database
       const user = await User.findOne({ email: email });
       if (!user) {
         return res
@@ -252,16 +287,18 @@ export const login = async (req, res) => {
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, {
         expiresIn: "1d",
       });
+      const tokens = `Bearer ${token}`;
       return res.status(200).json({
         success: true,
         message: "User logged in successfully.",
-        token,
+        token: tokens,
         role: user.role,
+        name: user.name,
       });
     } else {
       return res
         .status(400)
-        .json({ success: false, message: "User not found in temp storage." });
+        .json({ success: false, message: "Please send otp first." });
     }
   } catch (error) {
     console.error(error);
