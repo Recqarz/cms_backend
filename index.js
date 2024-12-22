@@ -22,7 +22,7 @@ app.use("/api", allRoutes);
 
 const port = process.env.PORT;
 
-cron.schedule("*/1 * * * *", () => {
+cron.schedule("*/10 * * * *", () => {
   dataUpdater();
   console.log("running a task every ten minute");
 });

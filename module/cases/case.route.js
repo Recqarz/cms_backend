@@ -11,6 +11,12 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import {
+  delteSingleCnr,
+  getAllArchivedCnrs,
+  permanentlyDeleteCnr,
+  restoreSingleCnr,
+} from "./casedelterestore.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -57,3 +63,11 @@ cnrRoute.post(
   upload.single("excelFile"),
   asyncHandler(AddNewBulkCnr)
 );
+
+cnrRoute.delete("/delte-cnr/:cnrNumber", delteSingleCnr);
+
+cnrRoute.put("/restore-cnr/:cnrNumber", restoreSingleCnr);
+
+cnrRoute.get("/get-archive-cnr", getAllArchivedCnrs);
+
+cnrRoute.delete("/permanently-delete-cnr/:cnrNumber", permanentlyDeleteCnr);
