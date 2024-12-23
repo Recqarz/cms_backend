@@ -22,14 +22,14 @@ export const getCnrDetails = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
     const count = await CnrDetail.countDocuments({
-      userId: { $in: [isVerify.id] },
+      userId: { $elemMatch: { userId: isVerify.id } },
     });
-    let pageSize = Math.floor(count / pageLimit);
+    let pageSize = Math.ceil(count / parseInt(pageLimit));
     const cnr = await CnrDetail.find({
       userId: { $elemMatch: { userId: isVerify.id } },
     })
-      .skip((pageNo - 1) * pageLimit)
-      .limit(pageLimit);
+      .skip((parseInt(pageNo) - 1) * parseInt(pageLimit))
+      .limit(parseInt(pageLimit));
 
     if (!cnr) {
       return res

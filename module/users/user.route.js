@@ -2,7 +2,7 @@ import {
   resetPassword,
   tempResetPassword,
 } from "./resetPasswprd/resetPassword.controller.js";
-import { tempRegister, register, tempLogin, login } from "./user.controller.js";
+import { tempRegister, register, tempLogin, login, getUserData } from "./user.controller.js";
 import { Router } from "express";
 export const userRoutes = Router();
 
@@ -17,3 +17,5 @@ userRoutes.post("/login", login);
 userRoutes.post("/temp-reset-password", tempResetPassword);
 
 userRoutes.post("/reset-password", resetPassword);
+
+userRoutes.get("/get-user-data", getUserData);
