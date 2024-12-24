@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
 import { CnrDetail } from "./case.model.js";
+import { ExternalUser } from "../externalUser/externaluser.model.js";
 
 export const delteSingleCnr = async (req, res) => {
   const { cnrNumber } = req.params;
@@ -145,6 +146,19 @@ export const permanentlyDeleteCnr = async (req, res) => {
     const archivedUserIndex = cnrDetails.archive.findIndex(
       (user) => user.userId === userId
     );
+    const archivedUser = cnrDetails.archive.filter(
+      (user) => user.userId === userId
+    );
+    const externaluser = await ExternalUser.findById(
+      archivedUser[0].externalUserId
+    );
+    if (!externaluser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "External User not found" });
+    }
+    externaluser.noOfAssigncases -= 1;
+    await externaluser.save();
     if (archivedUserIndex === -1) {
       return res
         .status(404)
@@ -154,12 +168,10 @@ export const permanentlyDeleteCnr = async (req, res) => {
     cnrDetails.archive.splice(archivedUserIndex, 1);
 
     await cnrDetails.save();
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "CNR successfully permanently deleted from archive",
-      });
+    return res.status(200).json({
+      success: true,
+      message: "CNR successfully permanently deleted from archive",
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "Server Error" });

@@ -48,3 +48,40 @@ export const getExternalUser = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error." });
   }
 };
+
+export const delteExternalUser = async (req, res) => {
+  const { token } = req.headers;
+  const { id } = req.params;
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized." });
+  }
+  try {
+    const isverify = jwt.verify(
+      token.split(" ")[1],
+      process.env.JWT_SECRET_KEY
+    );
+    if (!isverify) {
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
+    const externalUser = await ExternalUser.findByIdAndDelete(id);
+    if (!externalUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "External external user not found." });
+    }
+    if (externalUser.noOfAssigncases == 0) {
+      await externalUser.delete();
+      return res.status(200).json({
+        success: true,
+        message: "External User deleted successfully.",
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: "External User cannot be deleted as it has cases assigned.",
+    });
+  } catch (error) {
+    console.error("Error deleting external external user:", error.message);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};

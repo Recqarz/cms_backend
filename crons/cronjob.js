@@ -122,10 +122,10 @@ export const dataUpdater = async () => {
             );
             return;
           }
-          if (data.error === "Diffrent_format") {
+          if (data.error === "Different_format") {
             await UnsavedCnr.findOneAndUpdate(
               { cnrNumber: cnr },
-              { status: "Diffrent_format" }
+              { status: "Different_format" }
             );
             return;
           }
