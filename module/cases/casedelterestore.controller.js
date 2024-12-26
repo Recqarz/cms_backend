@@ -34,6 +34,7 @@ export const delteSingleCnr = async (req, res) => {
         .json({ success: false, message: "User ID not found in this CNR" });
     }
     const [removedUser] = cnrDetails.userId.splice(userIndex, 1);
+    removedUser.expireTime = Date.now()+ (1000*60*60*24*30);
     cnrDetails.archive.push(removedUser);
     await cnrDetails.save();
     return res
@@ -75,6 +76,7 @@ export const restoreSingleCnr = async (req, res) => {
         .json({ success: false, message: "User ID not found in archived CNR" });
     }
     const [restoredUser] = cnrDetails.archive.splice(archivedUserIndex, 1);
+    delete restoredUser.expireTime;
     cnrDetails.userId.push(restoredUser);
     await cnrDetails.save();
     return res

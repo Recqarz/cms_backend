@@ -63,14 +63,14 @@ export const delteExternalUser = async (req, res) => {
     if (!isverify) {
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
-    const externalUser = await ExternalUser.findByIdAndDelete(id);
+    const externalUser = await ExternalUser.findById(id);
     if (!externalUser) {
       return res
         .status(404)
         .json({ success: false, message: "External external user not found." });
     }
     if (externalUser.noOfAssigncases == 0) {
-      await externalUser.delete();
+      await ExternalUser.findByIdAndDelete(id);
       return res.status(200).json({
         success: true,
         message: "External User deleted successfully.",
