@@ -9,44 +9,82 @@ import { ExternalUser } from "../externalUser/externaluser.model.js";
 
 export const getCnrDetails = async (req, res) => {
   const { token } = req.headers;
+  const { pageNo = 1, pageLimit = 10, filterOption, filterText } = req.query;
   if (!token) {
     return res.status(401).json({ success: false, message: "Unauthorized." });
   }
-  const { pageNo = 1, pageLimit = 10 } = req.query;
   try {
-    const isVerify = jwt.verify(
-      token?.split(" ")[1],
-      process.env.JWT_SECRET_KEY
-    );
-    if (!isVerify) {
+    let isVerify;
+    try {
+      isVerify = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
+    } catch (error) {
+      console.error("JWT verification error:", error.message);
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
-    const count = await CnrDetail.countDocuments({
-      userId: { $in: [isVerify.id] },
-    });
-    let pageSize = Math.floor(count / pageLimit);
-    const cnr = await CnrDetail.find({
-      userId: { $elemMatch: { userId: isVerify.id } },
-    })
-      .skip((pageNo - 1) * pageLimit)
-      .limit(pageLimit);
 
-    if (!cnr) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No Cnr details found." });
+    const filterQuery = {
+      "userId.userId": isVerify.id,
+    };
+    const sortOptions = {};
+    if (filterOption && filterOption.toLowerCase() !== "all") {
+      const filterMap = {
+        active: {
+          "caseStatus.2.1": { $not: { $regex: /case disposed/i } },
+        },
+        inactive: {
+          "caseStatus.2.1": { $regex: /case disposed/i },
+        }
+      };
+
+      const selectedFilter = filterMap[filterOption.toLowerCase()];
+      if (selectedFilter) {
+        Object.assign(filterQuery, selectedFilter);
+      }
     }
+    if (filterText) {
+      const textSearchFields = [
+        "cnrNumber",
+        "caseDetails.CNR Number",
+        "caseDetails.Case Type",
+        "caseDetails.Filing Number",
+        "caseDetails.Registration Number",
+        "firDetails.FIR Number",
+        "firDetails.Police Station",
+        "caseStatus.2.1",
+      ];
+
+      filterQuery.$or = textSearchFields.map((field) => ({
+        [field]: { $regex: new RegExp(filterText, "i") },
+      }));
+    }
+    sortOptions["caseStatus.1.1"] = 1;
+    const [count, cnr] = await Promise.all([
+      CnrDetail.countDocuments(filterQuery),
+      CnrDetail.find(filterQuery)
+        .skip((parseInt(pageNo, 10) - 1) * parseInt(pageLimit, 10))
+        .limit(parseInt(pageLimit, 10))
+        .sort(sortOptions),
+    ]);
+
+    if (!cnr || cnr.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No CNR details found.",
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: cnr,
-      message: "Cnr details found.",
-      pageSize,
+      message: "CNR details found.",
+      pageSize: Math.ceil(count / parseInt(pageLimit, 10)),
     });
   } catch (error) {
-    console.error("Error getting Cnr details:", error.message);
+    console.error("Error getting CNR details:", error.stack);
     return res.status(500).json({ success: false, message: "Server error." });
   }
 };
+
 
 export const getUnsavedCnrDetails = async (req, res) => {
   const { token } = req.headers;
@@ -144,6 +182,28 @@ export const AddNewSingleCnr = async (req, res) => {
         jointUser,
       });
       await existingCnr.save();
+      const unsavedCnrs = await UnsavedCnr.findOne({ cnrNumber });
+      if (unsavedCnrs) {
+        const userCnrExistsss = unsavedCnrs.userId.some(
+          (user) => user.userId === userId
+        );
+        if (!userCnrExistsss) {
+          unsavedCnrs.userId.push({
+            userId,
+            externalUserName,
+            externalUserId,
+            jointUser,
+          });
+          await unsavedCnrs.save();
+        }
+      } else {
+        const newCnr = new UnsavedCnr({
+          cnrNumber,
+          userId: [{ userId, externalUserName, externalUserId, jointUser }],
+          status: "processed",
+        });
+        await newCnr.save();
+      }
       const externalUser = await ExternalUser.findById(externalUserId);
       if (externalUser) {
         externalUser.noOfAssigncases += 1;
@@ -286,6 +346,28 @@ export const AddNewBulkCnr = async (req, res) => {
         };
         cnrDetail.userId.push(obj);
         await cnrDetail.save();
+        const unsavedCnrs = await UnsavedCnr.findOne({ cnrNumber });
+        if (unsavedCnrs) {
+          const userCnrExistsss = unsavedCnrs.userId.some(
+            (user) => user.userId === userId
+          );
+          if (!userCnrExistsss) {
+            unsavedCnrs.userId.push({
+              userId,
+              externalUserName,
+              externalUserId,
+              jointUser,
+            });
+            await unsavedCnrs.save();
+          }
+        } else {
+          const newCnr = new UnsavedCnr({
+            cnrNumber,
+            userId: [{ userId, externalUserName, externalUserId, jointUser }],
+            status: "processed",
+          });
+          await newCnr.save();
+        }
       } else {
         const newCnrDetail = await UnsavedCnr.findOne({ cnrNumber: cnrNumber });
         if (newCnrDetail) {
