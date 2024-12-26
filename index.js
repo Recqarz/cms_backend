@@ -31,8 +31,6 @@ dataUpdater();
 cleanUpTempResetStorageofall();
 cleanUpArchiveCnr();
 
-
-
 app.listen(port, async () => {
   console.log(`server is running on port ${port}`);
   await connection;
