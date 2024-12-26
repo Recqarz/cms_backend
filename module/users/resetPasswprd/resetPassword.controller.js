@@ -3,6 +3,7 @@ import { sendOtptoEmail } from "../otpservice/email.service.js";
 import { sendSmsToRecipient } from "../otpservice/sms.service.js";
 import { User } from "../user.model.js";
 import argon2 from "argon2";
+import jwt from "jsonwebtoken";
 
 const tempResetUser = [];
 
@@ -34,6 +35,28 @@ export const tempResetPassword = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+export const validateToken = (req, res) => {
+  const { token } = req.headers;
+  if (!token) {
+    return res.status(401).json({ message: "Token not provided", success: false });
+  }
+  const tokens = token.split(" ")[1];
+  if (!tokens) {
+    return res.status(401).json({ message: "Token not provided", success: false });
+  }
+  try {
+    const key = process.env.JWT_SECRET_KEY;
+    const decoded = jwt.verify(tokens, key);
+    if (!decoded) {
+      return res.status(403).json({ message: "Token is not valid", success: false  });
+    }
+    return res.json({ message: "Token is valid", success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(403).json({ message: "Token is not valid", success: false });
   }
 };
 

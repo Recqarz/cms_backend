@@ -1,6 +1,7 @@
 import {
   resetPassword,
   tempResetPassword,
+  validateToken,
 } from "./resetPasswprd/resetPassword.controller.js";
 import {
   tempRegister,
@@ -24,6 +25,8 @@ userRoutes.post("/login", login);
 userRoutes.post("/temp-reset-password", tempResetPassword);
 
 userRoutes.post("/reset-password", resetPassword);
+
+userRoutes.get("/validatetoken", validateToken);
 
 userRoutes.get("/get-user-data", getUserData);
 
