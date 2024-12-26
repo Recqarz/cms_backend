@@ -6,6 +6,7 @@ import { User } from "./user.model.js";
 import { sendSmsToRecipient } from "./otpservice/sms.service.js";
 import { sendOtptoEmail } from "./otpservice/email.service.js";
 import { otpGenerator } from "../../otpGenerator/otpGenerator.js";
+import { sendWhatsappMessage } from "./otpservice/whatsapp.service.js";
 
 const tempStorage = [];
 const loginTempUser = [];
@@ -222,6 +223,7 @@ export const tempLogin = async (req, res) => {
     const text = `Your OTP for Sandhee Platform is ${mobileOtp.otp}. It is valid for 5 minutes. Please do not share it with anyone. Team SANDHEE (RecQARZ)`;
     sendSmsToRecipient(user.mobile, text);
     sendOtptoEmail(user, emailOtp.otp);
+    sendWhatsappMessage(user.mobile,mobileOtp.otp)
     const existingUserIndex = loginTempUser.findIndex((u) => u.email === email);
     if (existingUserIndex !== -1) {
       loginTempUser[existingUserIndex].mobileOtp = mobileOtp;
