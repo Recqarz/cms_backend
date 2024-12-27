@@ -18,9 +18,10 @@ export const tempResetPassword = async (req, res) => {
     }
     const mobileOtp = otpGenerator();
     const emailOtp = otpGenerator();
-    const text = `Your OTP for Sandhee Platform is ${mobileOtp.otp}. It is valid for 5 minutes. Please do not share it with anyone. Team SANDHEE (RecQARZ)`;
+    const text = `Your verification code is: ${mobileOtp.otp}. CMS_RecQARZ`;
     sendSmsToRecipient(user.mobile, text);
     sendOtptoEmail(user, emailOtp.otp);
+    sendWhatsappMessage(user.mobile,mobileOtp.otp)
     const existingUserIndex = tempResetUser.findIndex((u) => u.email === email);
     if (existingUserIndex !== -1) {
       tempResetUser[existingUserIndex].mobileOtp = mobileOtp;
