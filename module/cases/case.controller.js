@@ -9,7 +9,15 @@ import { ExternalUser } from "../externalUser/externaluser.model.js";
 
 export const getCnrDetails = async (req, res) => {
   const { token } = req.headers;
-  const { pageNo = 1, pageLimit = 10, filterOption, filterText } = req.query;
+  const {
+    pageNo = 1,
+    pageLimit = 10,
+    filterText,
+    nextHearing,
+    petitioner,
+    respondent
+  } = req.query;
+  const filterOption = "active";
   if (!token) {
     return res.status(401).json({ success: false, message: "Unauthorized." });
   }
@@ -21,11 +29,9 @@ export const getCnrDetails = async (req, res) => {
       console.error("JWT verification error:", error.message);
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
-
     const filterQuery = {
       "userId.userId": isVerify.id,
     };
-    const sortOptions = {};
     if (filterOption && filterOption.toLowerCase() !== "all") {
       const filterMap = {
         active: {
@@ -33,9 +39,8 @@ export const getCnrDetails = async (req, res) => {
         },
         inactive: {
           "caseStatus.2.1": { $regex: /case disposed/i },
-        }
+        },
       };
-
       const selectedFilter = filterMap[filterOption.toLowerCase()];
       if (selectedFilter) {
         Object.assign(filterQuery, selectedFilter);
@@ -57,27 +62,58 @@ export const getCnrDetails = async (req, res) => {
         [field]: { $regex: new RegExp(filterText, "i") },
       }));
     }
-    sortOptions["caseStatus.1.1"] = 1;
-    const [count, cnr] = await Promise.all([
-      CnrDetail.countDocuments(filterQuery),
-      CnrDetail.find(filterQuery)
-        .skip((parseInt(pageNo, 10) - 1) * parseInt(pageLimit, 10))
-        .limit(parseInt(pageLimit, 10))
-        .sort(sortOptions),
-    ]);
-
-    if (!cnr || cnr.length === 0) {
+    const data = await CnrDetail.find(filterQuery);
+    if (!data || data.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No CNR details found.",
       });
     }
-
+    let sortedData = data;
+    if (nextHearing === "1" || nextHearing === "-1") {
+      sortedData = data.sort((a, b) => {
+        const dateA = parseDate(a.caseStatus?.[1]?.[1]);
+        const dateB = parseDate(b.caseStatus?.[1]?.[1]);
+        if (!dateA || !dateB) return 0;
+        return nextHearing === "1" ? dateA - dateB : dateB - dateA;
+      });
+    }
+    if (petitioner === "1" || petitioner === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const petitionerA = cleanPetitionerName(
+          a.petitionerAndAdvocate?.[0]?.[0]
+        );
+        const petitionerB = cleanPetitionerName(
+          b.petitionerAndAdvocate?.[0]?.[0]
+        );
+        if (!petitionerA || !petitionerB) return 0;
+        return petitioner === "1"
+          ? petitionerA.localeCompare(petitionerB)
+          : petitionerB.localeCompare(petitionerA);
+      });
+    }
+    if (respondent === "1" || respondent === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const respondentA = cleanPetitionerName(
+          a.respondentAndAdvocate?.[0]?.[0]
+        );
+        const respondentB = cleanPetitionerName(
+          b.respondentAndAdvocate?.[0]?.[0]
+        );
+        if (!respondentA || !respondentB) return 0;
+        return respondent === "1"
+          ? respondentA.localeCompare(respondentB)
+          : respondentB.localeCompare(respondentA);
+      });
+    }
+    const startIndex = (parseInt(pageNo, 10) - 1) * parseInt(pageLimit, 10);
+    const endIndex = startIndex + parseInt(pageLimit, 10);
+    const paginatedData = sortedData.slice(startIndex, endIndex);
     return res.status(200).json({
       success: true,
-      data: cnr,
+      data: paginatedData,
       message: "CNR details found.",
-      pageSize: Math.ceil(count / parseInt(pageLimit, 10)),
+      pageSize: Math.ceil(sortedData.length / parseInt(pageLimit, 10)),
     });
   } catch (error) {
     console.error("Error getting CNR details:", error.stack);
@@ -85,6 +121,146 @@ export const getCnrDetails = async (req, res) => {
   }
 };
 
+export const getDisposedCnrDetails = async (req, res) => {
+  const { token } = req.headers;
+  const {
+    pageNo = 1,
+    pageLimit = 10,
+    filterText,
+    nextHearing,
+    petitioner,
+    respondent
+  } = req.query;
+  const filterOption = "inactive";
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized." });
+  }
+  try {
+    let isVerify;
+    try {
+      isVerify = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
+    } catch (error) {
+      console.error("JWT verification error:", error.message);
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
+    const filterQuery = {
+      "userId.userId": isVerify.id,
+    };
+    if (filterOption && filterOption.toLowerCase() !== "all") {
+      const filterMap = {
+        active: {
+          "caseStatus.2.1": { $not: { $regex: /case disposed/i } },
+        },
+        inactive: {
+          "caseStatus.2.1": { $regex: /case disposed/i },
+        },
+      };
+      const selectedFilter = filterMap[filterOption.toLowerCase()];
+      if (selectedFilter) {
+        Object.assign(filterQuery, selectedFilter);
+      }
+    }
+    if (filterText) {
+      const textSearchFields = [
+        "cnrNumber",
+        "caseDetails.CNR Number",
+        "caseDetails.Case Type",
+        "caseDetails.Filing Number",
+        "caseDetails.Registration Number",
+        "firDetails.FIR Number",
+        "firDetails.Police Station",
+        "caseStatus.2.1",
+      ];
+
+      filterQuery.$or = textSearchFields.map((field) => ({
+        [field]: { $regex: new RegExp(filterText, "i") },
+      }));
+    }
+    const data = await CnrDetail.find(filterQuery);
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No CNR details found.",
+      });
+    }
+    let sortedData = data;
+    if (nextHearing === "1" || nextHearing === "-1") {
+      sortedData = data.sort((a, b) => {
+        const dateA = parseDate(a.caseStatus?.[1]?.[1]);
+        const dateB = parseDate(b.caseStatus?.[1]?.[1]);
+        if (!dateA || !dateB) return 0;
+        return nextHearing === "1" ? dateA - dateB : dateB - dateA;
+      });
+    }
+    if (petitioner === "1" || petitioner === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const petitionerA = cleanPetitionerName(
+          a.petitionerAndAdvocate?.[0]?.[0]
+        );
+        const petitionerB = cleanPetitionerName(
+          b.petitionerAndAdvocate?.[0]?.[0]
+        );
+        if (!petitionerA || !petitionerB) return 0;
+        return petitioner === "1"
+          ? petitionerA.localeCompare(petitionerB)
+          : petitionerB.localeCompare(petitionerA);
+      });
+    }
+    if (respondent === "1" || respondent === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const respondentA = cleanPetitionerName(
+          a.respondentAndAdvocate?.[0]?.[0]
+        );
+        const respondentB = cleanPetitionerName(
+          b.respondentAndAdvocate?.[0]?.[0]
+        );
+        if (!respondentA || !respondentB) return 0;
+        return respondent === "1"
+          ? respondentA.localeCompare(respondentB)
+          : respondentB.localeCompare(respondentA);
+      });
+    }
+    const startIndex = (parseInt(pageNo, 10) - 1) * parseInt(pageLimit, 10);
+    const endIndex = startIndex + parseInt(pageLimit, 10);
+    const paginatedData = sortedData.slice(startIndex, endIndex);
+    return res.status(200).json({
+      success: true,
+      data: paginatedData,
+      message: "CNR details found.",
+      pageSize: Math.ceil(sortedData.length / parseInt(pageLimit, 10)),
+    });
+  } catch (error) {
+    console.error("Error getting CNR details:", error.stack);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
+};
+
+// Helper function to parse date strings like "01st March 2023"
+function parseDate(dateString) {
+  if (!dateString) return null;
+
+  try {
+    // Remove ordinal suffixes (st, nd, rd, th)
+    const cleanDateString = dateString.replace(/(\d+)(st|nd|rd|th)/i, "$1");
+    return new Date(cleanDateString);
+  } catch (error) {
+    console.error("Error parsing date:", error.message);
+    return null;
+  }
+}
+
+// Helper function to clean and extract the petitioner's name from the format
+function cleanPetitionerName(petitionerString) {
+  if (!petitionerString) return null;
+
+  try {
+    const nameMatch = petitionerString.match(/^\d+\)\s*([^-]+)/);
+    return nameMatch ? nameMatch[1].trim() : null;
+  } catch (error) {
+    console.error("Error cleaning petitioner name:", error.message);
+    return null;
+  }
+}
 
 export const getUnsavedCnrDetails = async (req, res) => {
   const { token } = req.headers;

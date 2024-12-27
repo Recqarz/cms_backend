@@ -11,14 +11,18 @@ export const documentRoute = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ["application/pdf"];
+// const fileFilter = (req, file, cb) => {
+//   const allowedMimeTypes = ["application/pdf"];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Invalid file type. Only PDF files are allowed."), false);
-  }
+//   if (allowedMimeTypes.includes(file.mimetype)) {
+//     cb(null, true);
+//   } else {
+//     cb(new Error("Invalid file type. Only PDF files are allowed."), false);
+//   }
+// };
+
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
 };
 
 const storage = multer.diskStorage({
@@ -40,8 +44,8 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage, fileFilter });
+const upload = multer({ storage });
 
-documentRoute.post("/add-document", upload.single("file"), addDocument);
+documentRoute.post("/add-document", upload.array("files"), asyncHandler(addDocument));
 
 documentRoute.get("/get-document", getDocument);

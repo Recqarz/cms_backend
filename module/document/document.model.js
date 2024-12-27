@@ -9,14 +9,26 @@ const docSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  docLink:{
+  noOfDocument: {
+    type: Number,
+    default: 1,
+  },
+  date: {
+    type: Date,
+    default: new Date(),
+  },
+  respondent: {
     type: String,
     default: "",
   },
-  date:{
-    type: Date,
-    default: new Date(),
-  }
-})
+  petitioner: {
+    type: String,
+    default: "",
+  },
+  documents: {
+    type: [],
+    default: [],
+  },
+});
 
 export const Document = mongoose.model("Document", docSchema);
