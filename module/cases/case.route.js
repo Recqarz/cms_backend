@@ -3,6 +3,7 @@ import {
   AddNewBulkCnr,
   AddNewSingleCnr,
   getCnrDetails,
+  getDisposedCnrDetails,
   getSingleCnr,
   getUnsavedCnrDetails,
 } from "./case.controller.js";
@@ -51,6 +52,8 @@ const asyncHandler = (fn) => (req, res, next) => {
 };
 
 cnrRoute.get("/get-cnr", asyncHandler(getCnrDetails));
+
+cnrRoute.get("/get-disposed-cnr", asyncHandler(getDisposedCnrDetails));
 
 cnrRoute.get("/get-unsaved-cnr", getUnsavedCnrDetails);
 
