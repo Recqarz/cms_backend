@@ -15,7 +15,7 @@ export const getCnrDetails = async (req, res) => {
     filterText,
     nextHearing,
     petitioner,
-    respondent
+    respondent,
   } = req.query;
   const filterOption = "active";
   if (!token) {
@@ -56,6 +56,8 @@ export const getCnrDetails = async (req, res) => {
         "firDetails.FIR Number",
         "firDetails.Police Station",
         "caseStatus.2.1",
+        "petitionerAndAdvocate.0.0",
+        "respondentAndAdvocate.0.0",
       ];
 
       filterQuery.$or = textSearchFields.map((field) => ({
@@ -129,7 +131,7 @@ export const getDisposedCnrDetails = async (req, res) => {
     filterText,
     nextHearing,
     petitioner,
-    respondent
+    respondent,
   } = req.query;
   const filterOption = "inactive";
   if (!token) {
@@ -170,6 +172,8 @@ export const getDisposedCnrDetails = async (req, res) => {
         "firDetails.FIR Number",
         "firDetails.Police Station",
         "caseStatus.2.1",
+        "petitionerAndAdvocate.0.0",
+        "respondentAndAdvocate.0.0",
       ];
 
       filterQuery.$or = textSearchFields.map((field) => ({
@@ -264,6 +268,12 @@ function cleanPetitionerName(petitionerString) {
 
 export const getUnsavedCnrDetails = async (req, res) => {
   const { token } = req.headers;
+  const {
+    pageLimit = 10,
+    currentPage = 1,
+    searchQuery = "",
+    selectedFilter = "",
+  } = req.query;
   if (!token) {
     return res
       .status(401)
@@ -279,24 +289,38 @@ export const getUnsavedCnrDetails = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Unauthorized: Invalid token." });
     }
-    const unsavedCnr = await UnsavedCnr.find({
+    const query = {
       userId: { $elemMatch: { userId: isVerify.id } },
-    });
-    if (!unsavedCnr) {
+    };
+    if (searchQuery) {
+      query.cnrNumber = { $regex: searchQuery, $options: "i" };
+    }
+    if (selectedFilter.toLowerCase() !== "all") {
+      query.status = { $regex: `^${selectedFilter}$`, $options: "i" };
+    }
+    const totalItems = await UnsavedCnr.countDocuments(query);
+    const unsavedCnr = await UnsavedCnr.find(query);
+    const startIndex =
+      (parseInt(currentPage, 10) - 1) * parseInt(pageLimit, 10);
+    const endIndex = startIndex + parseInt(pageLimit, 10);
+    const paginatedData = unsavedCnr.slice(startIndex, endIndex);
+    if (!unsavedCnr || unsavedCnr.length === 0) {
       return res
         .status(404)
         .json({ success: false, message: "No unsaved Cnr details found." });
     }
-    const ndatas = unsavedCnr.map((ele) => {
+    const ndatas = paginatedData.map((ele) => {
       return {
         cnr: ele.cnrNumber,
         status: ele.status,
         date: new Date(ele.createdAt).toISOString().split("T")[0],
       };
     });
+
     return res.status(200).json({
       success: true,
       data: ndatas,
+      pageSize: Math.ceil(totalItems / pageLimit),
       message: "Unsaved Cnr details found.",
     });
   } catch (error) {
