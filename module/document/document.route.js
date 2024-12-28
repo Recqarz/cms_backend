@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { addDocument, getDocument } from "./document.controller.js";
+import { addDocument, getDocument, getDocumentOfSingleCnr } from "./document.controller.js";
 
 export const documentRoute = Router();
 
@@ -49,3 +49,5 @@ const upload = multer({ storage });
 documentRoute.post("/add-document", upload.array("files"), asyncHandler(addDocument));
 
 documentRoute.get("/get-document", getDocument);
+
+documentRoute.get("/get-document-of-single-cnr/:cnrNumber", getDocumentOfSingleCnr);
