@@ -239,12 +239,9 @@ export const getDisposedCnrDetails = async (req, res) => {
   }
 };
 
-// Helper function to parse date strings like "01st March 2023"
 function parseDate(dateString) {
   if (!dateString) return null;
-
   try {
-    // Remove ordinal suffixes (st, nd, rd, th)
     const cleanDateString = dateString.replace(/(\d+)(st|nd|rd|th)/i, "$1");
     return new Date(cleanDateString);
   } catch (error) {
@@ -253,10 +250,8 @@ function parseDate(dateString) {
   }
 }
 
-// Helper function to clean and extract the petitioner's name from the format
 function cleanPetitionerName(petitionerString) {
   if (!petitionerString) return null;
-
   try {
     const nameMatch = petitionerString.match(/^\d+\)\s*([^-]+)/);
     return nameMatch ? nameMatch[1].trim() : null;
