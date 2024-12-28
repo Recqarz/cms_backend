@@ -35,7 +35,37 @@ export const addDocument = async (req, res) => {
     if (!decodedToken) {
       return res.status(401).json({ message: "Unauthorized", success: false });
     }
+    const document = await Document.findOne({
+      userId: decodedToken.id,
+      cnrNumber,
+    });
+    if (document) {
+      req.files.forEach((file) => fs.unlinkSync(file.path));
+      return res.status(400).json({
+        message: "Document already exists for this CNR number",
+        success: false,
+      });
+    }
     const user = await User.findById(decodedToken.id);
+    const cnrDetails = await CnrDetail.findOne({ cnrNumber });
+    if (!cnrDetails) {
+      req.files.forEach((file) => fs.unlinkSync(file.path));
+      return res.status(404).json({
+        message: "CNR number not found",
+        success: false,
+      });
+    }
+    const userCnrExists = cnrDetails.userId.some(
+      (user) => user.userId === decodedToken.id
+    );
+    if (!userCnrExists) {
+      req.files.forEach((file) => fs.unlinkSync(file.path));
+      return res.status(403).json({
+        message: "User does not have access to this CNR number",
+        success: false,
+      });
+    }
+
     const attachments = [];
     const fileNames = req.body.fileNames || [];
     for (let i = 0; i < req.files.length; i++) {
@@ -72,7 +102,6 @@ export const addDocument = async (req, res) => {
       const firstLine = text.split("\n")[0].trim();
       return firstLine.replace(/^\d+\)\s*/, "").trim();
     }
-    const cnrDetails = await CnrDetail.findOne({ cnrNumber });
     const cleanedRespondent =
       cleanFirstLine(cnrDetails?.respondentAndAdvocate[0][0]) || "";
     const cleanedPetitioner =
