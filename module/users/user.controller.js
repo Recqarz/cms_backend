@@ -344,7 +344,7 @@ export const updateUserData = async (req, res) => {
     oneDayBeforenotification,
     whatsAppSms,
     emailSms,
-    moblieSms,
+    mobileSms,
   } = req.body;
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
@@ -362,7 +362,7 @@ export const updateUserData = async (req, res) => {
       updateFields.oneDayBeforenotification = oneDayBeforenotification;
     if (whatsAppSms !== undefined) updateFields.whatsAppSms = whatsAppSms;
     if (emailSms !== undefined) updateFields.emailSms = emailSms;
-    if (moblieSms !== undefined) updateFields.moblieSms = moblieSms;
+    if (mobileSms !== undefined) updateFields.mobileSms = mobileSms;
 
     if (Object.keys(updateFields).length === 0) {
       return res.status(400).json({

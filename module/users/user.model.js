@@ -92,7 +92,7 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
-  moblieSms: {
+  mobileSms: {
     type: Boolean,
     default: false,
   },

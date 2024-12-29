@@ -8,6 +8,7 @@ import cron from "node-cron";
 import { dataUpdater } from "./crons/cronjob.js";
 import { cleanUpTempResetStorageofall } from "./module/users/cronJob/cronJob.js";
 import { cleanUpArchiveCnr } from "./module/cases/autodeletecron/autodeletecron.job.js";
+import { sendHearingNotification } from "./notification/cronjobnotification.js";
 
 const app = express();
 
@@ -27,9 +28,11 @@ cron.schedule("*/10 * * * *", () => {
   dataUpdater();
   console.log("running a task every ten minute");
 });
+
 dataUpdater();
 cleanUpTempResetStorageofall();
 cleanUpArchiveCnr();
+sendHearingNotification()
 
 app.listen(port, async () => {
   console.log(`server is running on port ${port}`);
