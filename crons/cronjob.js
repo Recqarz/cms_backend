@@ -132,7 +132,7 @@ export const dataUpdater = async () => {
 
           const nseurl = data?.s3_links?.map((ele) => ({
             order_date: ele.order_date,
-            s3_url: ele.s3_url[0],
+            s3_url: ele.s3_url,
           }));
 
           const objs = { NA: "NA" };
