@@ -16,8 +16,7 @@ export async function sendHearingNotificationOnSms(
     from: process.env.NEXG_SMS_API_FROM,
     to: `+91${mobile}`,
     text,
-    indiaDltContentTemplateId:
-      process.env.NEXG_INDIAN_DLT_CONTENT_TEMPLATE_ID_NOTIFICATION,
+    indiaDltContentTemplateId: process.env.NOTIFICATION_NEXG_INDIAN_DLT_CONTENT_TEMPLATE_ID,
     indiaDltTelemarketerId: process.env.NEXG_TELEMARKETER_ID,
     indiaDltPrincipalEntityId:
       process.env.NEXG_SMS_API_INDIA_DLT_PRINCIPAL_ENTITY_ID,

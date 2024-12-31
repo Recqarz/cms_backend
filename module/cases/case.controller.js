@@ -6,6 +6,7 @@ import { UnsavedCnr } from "./unSavedCnr/unSavedCnr.js";
 import fs from "fs";
 import xlsx from "xlsx";
 import { ExternalUser } from "../externalUser/externaluser.model.js";
+import { User } from "../users/user.model.js";
 
 export const getCnrDetails = async (req, res) => {
   const { token } = req.headers;
@@ -370,6 +371,17 @@ export const AddNewSingleCnr = async (req, res) => {
           .status(409)
           .json({ success: false, message: "Already assigned CNR." });
       }
+      const currentUser = await User.findById(userId);
+      const subUserCnrExists = existingCnr.userId.some((userObj) =>
+        userObj.jointUser.some((user) => user.email === currentUser.email)
+      );
+      if (subUserCnrExists) {
+        console.log(subUserCnrExists);
+        return res.status(409).json({
+          success: false,
+          message: "Already assigned to as sub user.",
+        });
+      }
       existingCnr.userId.push({
         userId,
         externalUserName,
@@ -436,6 +448,8 @@ export const AddNewSingleCnr = async (req, res) => {
       userId: [{ userId, externalUserName, externalUserId, jointUser }],
       status: "priority",
     });
+    // create the joint userId and send the email to the joint user
+
     await newCnr.save();
     return res.status(201).json({
       success: true,
@@ -503,7 +517,7 @@ export const AddNewBulkCnr = async (req, res) => {
           cnrData[i][`user${j}daybeforenotification`] || 4
         );
 
-        if (email || mobile) {
+        if (email && mobile && name) {
           jointUser.push({
             name: name || "",
             email: email ? String(email) : "",
@@ -515,6 +529,7 @@ export const AddNewBulkCnr = async (req, res) => {
           });
         }
       }
+      // create the joint user id and send to the joint user
       if (cnrNumber.length !== 16) {
         const newCnr = new UnsavedCnr({
           cnrNumber,
@@ -531,6 +546,13 @@ export const AddNewBulkCnr = async (req, res) => {
           (user) => user.userId === userId
         );
         if (userCnrExists) {
+          continue;
+        }
+        const currentUser = await User.findById(userId);
+        const subUserCnrExists = cnrDetail.userId.some((userObj) =>
+          userObj.jointUser.some((user) => user.email === currentUser.email)
+        );
+        if (subUserCnrExists) {
           continue;
         }
         let obj = {
@@ -563,6 +585,9 @@ export const AddNewBulkCnr = async (req, res) => {
           });
           await newCnr.save();
         }
+        const nnuser = await ExternalUser.findById(externalUserId);
+        nnuser.noOfAssigncases = nnuser.noOfAssigncases + 1;
+        await nnuser.save();
       } else {
         const newCnrDetail = await UnsavedCnr.findOne({ cnrNumber: cnrNumber });
         if (newCnrDetail) {
@@ -580,6 +605,9 @@ export const AddNewBulkCnr = async (req, res) => {
           });
           newCnrDetail.status = "pending";
           await newCnrDetail.save();
+          const nnuser = await ExternalUser.findById(externalUserId);
+          nnuser.noOfAssigncases = nnuser.noOfAssigncases + 1;
+          await nnuser.save();
         } else {
           const newCnr = new UnsavedCnr({
             cnrNumber,
@@ -587,12 +615,12 @@ export const AddNewBulkCnr = async (req, res) => {
             status: "pending",
           });
           await newCnr.save();
+          const nnuser = await ExternalUser.findById(externalUserId);
+          nnuser.noOfAssigncases = nnuser.noOfAssigncases + 1;
+          await nnuser.save();
         }
       }
     }
-    const nnuser = await ExternalUser.findById(externalUserId);
-    nnuser.noOfAssigncases = nnuser.noOfAssigncases + cnrData.length;
-    await nnuser.save();
     fs.unlinkSync(req.file.path);
     return res
       .status(201)
@@ -605,14 +633,32 @@ export const AddNewBulkCnr = async (req, res) => {
 
 export const getSingleCnr = async (req, res) => {
   const { cnrNumber } = req.params;
+  const { token } = req.headers;
+  if (!token) {
+    return res
+     .status(401)
+     .json({ success: false, message: "Unauthorized: Token is missing." });
+  }
   try {
+    const tokenParts = token.split(" ");
+    const decodedToken = jwt.verify(tokenParts[1], process.env.JWT_SECRET_KEY);
+    if (!decodedToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Token verification failed.",
+      });
+    }
+    const userId = decodedToken.id;
     const cnrDetail = await CnrDetail.findOne({ cnrNumber: cnrNumber });
     if (!cnrDetail) {
       return res
         .status(404)
         .json({ success: false, message: "No Cnr details found." });
     }
-    return res.status(200).json({ success: true, data: cnrDetail });
+    const jointUsers = cnrDetail.userId
+    .filter((user) => user.userId === userId)
+    .flatMap((user) => user.jointUser || []);
+    return res.status(200).json({ success: true, data: cnrDetail,jointUsers });
   } catch (error) {
     console.error("Error getting single Cnr:", error.message);
     return res.status(500).json({ success: false, message: "Server error." });

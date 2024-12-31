@@ -4,7 +4,8 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { addDocument, getDocument, getDocumentOfSingleCnr } from "./document.controller.js";
+import { addDocument, deleteDocument, getDocument, getDocumentOfSingleCnr } from "./document.controller.js";
+import { getSubDocument } from "./subDocument/subdocument.js";
 
 export const documentRoute = Router();
 
@@ -50,4 +51,8 @@ documentRoute.post("/add-document", upload.array("files"), asyncHandler(addDocum
 
 documentRoute.get("/get-document", getDocument);
 
-documentRoute.get("/get-document-of-single-cnr/:cnrNumber", getDocumentOfSingleCnr);
+documentRoute.delete("/delete-document", deleteDocument);
+
+documentRoute.get("/get-sub-document", getSubDocument);
+
+documentRoute.get("/get-document-of-single-sub-cnr/:cnrNumber", getDocumentOfSingleCnr);
