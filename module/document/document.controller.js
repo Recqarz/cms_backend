@@ -206,7 +206,7 @@ export const deleteDocument = async (req, res) => {
   }
 };
 
-export const getDocumentOfSingleCnr = async (req, res) => {
+export const getDocumentOfSingleSubCnr = async (req, res) => {
   const { token } = req.headers;
   const { cnrNumber } = req.params;
   if (!token) {
@@ -223,6 +223,42 @@ export const getDocumentOfSingleCnr = async (req, res) => {
     const currUser = await User.findById(decodedToken.id);
     const document = await Document.findOne({
       "jointUser.email": currUser.email,
+      cnrNumber,
+    });
+    if (!document) {
+      return res
+        .status(404)
+        .json({ message: "No document found", success: false });
+    }
+    return res.json({
+      message: "Document retrieved successfully",
+      success: true,
+      data: document,
+    });
+  } catch (error) {
+    console.error("Error retrieving document:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", success: false });
+  }
+};
+
+export const getDocumentOfSingleCnr = async (req, res) => {
+  const { token } = req.headers;
+  const { cnrNumber } = req.params;
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized", success: false });
+  }
+  try {
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.JWT_SECRET_KEY
+    );
+    if (!decodedToken) {
+      return res.status(401).json({ message: "Unauthorized", success: false });
+    }
+    const document = await Document.findOne({
+      userId: decodedToken.id,
       cnrNumber,
     });
     if (!document) {
