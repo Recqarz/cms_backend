@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { addDocument, deleteDocument, getDocument, getDocumentOfSingleCnr } from "./document.controller.js";
+import { addDocument, deleteDocument, getDocument, getDocumentOfSingleCnr, getDocumentOfSingleSubCnr } from "./document.controller.js";
 import { getSubDocument } from "./subDocument/subdocument.js";
 
 export const documentRoute = Router();
@@ -55,4 +55,6 @@ documentRoute.delete("/delete-document", deleteDocument);
 
 documentRoute.get("/get-sub-document", getSubDocument);
 
-documentRoute.get("/get-document-of-single-sub-cnr/:cnrNumber", getDocumentOfSingleCnr);
+documentRoute.get("/get-document-of-single-sub-cnr/:cnrNumber", getDocumentOfSingleSubCnr);
+
+documentRoute.get("/get-document-of-single-cnr/:cnrNumber", getDocumentOfSingleCnr);
