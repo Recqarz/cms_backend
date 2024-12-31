@@ -29,6 +29,10 @@ const docSchema = new mongoose.Schema({
     type: [],
     default: [],
   },
+  jointUser:{
+    type: [],
+    default: [],
+  }
 });
 
 export const Document = mongoose.model("Document", docSchema);

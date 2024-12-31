@@ -106,6 +106,9 @@ export const addDocument = async (req, res) => {
       cleanFirstLine(cnrDetails?.respondentAndAdvocate[0][0]) || "";
     const cleanedPetitioner =
       cleanFirstLine(cnrDetails?.petitionerAndAdvocate[0][0]) || "";
+    const jointUsers = cnrDetails.userId
+      .filter((user) => user.userId === decodedToken.id)
+      .flatMap((user) => user.jointUser || []);
     const newDocument = await Document.create({
       cnrNumber,
       documents: attachments,
@@ -113,6 +116,7 @@ export const addDocument = async (req, res) => {
       noOfDocument: attachments.length,
       respondent: cleanedRespondent,
       petitioner: cleanedPetitioner,
+      jointUser: jointUsers,
     });
     return res.json({
       message: "Documents uploaded successfully",
