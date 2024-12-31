@@ -164,6 +164,48 @@ export const getDocument = async (req, res) => {
   }
 };
 
+export const deleteDocument = async (req, res) => {
+  const { token } = req.headers;
+  const { cnrNumber, index } = req.body;
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized", success: false });
+  }
+  try {
+    const decodedToken = jwt.verify(
+      token.split(" ")[1],
+      process.env.JWT_SECRET_KEY
+    );
+    if (!decodedToken) {
+      return res.status(401).json({ message: "Unauthorized", success: false });
+    }
+    const document = await Document.findOne({
+      cnrNumber,
+      userId: decodedToken.id,
+    });
+    if (!document) {
+      return res
+        .status(404)
+        .json({ message: "Document not found", success: false });
+    }
+    if (index < 0 || index >= document.documents.length) {
+      return res
+        .status(400)
+        .json({ message: "Invalid document index", success: false });
+    }
+    document.documents.splice(index, 1);
+    document.noOfDocument -= 1;
+    await document.save();
+    return res
+      .status(200)
+      .json({ message: "Document deleted successfully", success: true });
+  } catch (error) {
+    console.error("Error deleting document:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", success: false });
+  }
+};
+
 export const getDocumentOfSingleCnr = async (req, res) => {
   const { token } = req.headers;
   const { cnrNumber } = req.params;
@@ -178,8 +220,9 @@ export const getDocumentOfSingleCnr = async (req, res) => {
     if (!decodedToken) {
       return res.status(401).json({ message: "Unauthorized", success: false });
     }
+    const currUser = await User.findById(decodedToken.id);
     const document = await Document.findOne({
-      userId: decodedToken.id,
+      "jointUser.email": currUser.email,
       cnrNumber,
     });
     if (!document) {

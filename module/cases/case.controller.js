@@ -633,14 +633,32 @@ export const AddNewBulkCnr = async (req, res) => {
 
 export const getSingleCnr = async (req, res) => {
   const { cnrNumber } = req.params;
+  const { token } = req.headers;
+  if (!token) {
+    return res
+     .status(401)
+     .json({ success: false, message: "Unauthorized: Token is missing." });
+  }
   try {
+    const tokenParts = token.split(" ");
+    const decodedToken = jwt.verify(tokenParts[1], process.env.JWT_SECRET_KEY);
+    if (!decodedToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Token verification failed.",
+      });
+    }
+    const userId = decodedToken.id;
     const cnrDetail = await CnrDetail.findOne({ cnrNumber: cnrNumber });
     if (!cnrDetail) {
       return res
         .status(404)
         .json({ success: false, message: "No Cnr details found." });
     }
-    return res.status(200).json({ success: true, data: cnrDetail });
+    const jointUsers = cnrDetail.userId
+    .filter((user) => user.userId === userId)
+    .flatMap((user) => user.jointUser || []);
+    return res.status(200).json({ success: true, data: cnrDetail,jointUsers });
   } catch (error) {
     console.error("Error getting single Cnr:", error.message);
     return res.status(500).json({ success: false, message: "Server error." });

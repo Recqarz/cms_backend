@@ -18,6 +18,7 @@ import {
   permanentlyDeleteCnr,
   restoreSingleCnr,
 } from "./casedelterestore.controller.js";
+import { getDisposedSubCnrDetails, getSingleSubCnr, getSubCnrDetails } from "./subcases/subcase.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,13 +54,19 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 cnrRoute.get("/get-cnr", asyncHandler(getCnrDetails));
 
+cnrRoute.get("/get-sub-cnr", getSubCnrDetails);
+
 cnrRoute.get("/get-disposed-cnr", asyncHandler(getDisposedCnrDetails));
+
+cnrRoute.get("/get-disposed-sub-cnr", getDisposedSubCnrDetails);
 
 cnrRoute.get("/get-unsaved-cnr", getUnsavedCnrDetails);
 
 cnrRoute.post("/addnew-singlecnr", asyncHandler(AddNewSingleCnr));
 
 cnrRoute.get("/get-singlecnr/:cnrNumber", getSingleCnr);
+
+cnrRoute.get("/get-singlesubcnr/:cnrNumber", getSingleSubCnr);
 
 cnrRoute.post(
   "/addnew-bulkcnr",
