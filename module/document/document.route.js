@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { addDocument, deleteDocument, getDocument, getDocumentOfSingleCnr, getDocumentOfSingleSubCnr } from "./document.controller.js";
+import { addDocument, addMoreDocument, deleteDocument, getDocument, getDocumentOfSingleCnr, getDocumentOfSingleSubCnr } from "./document.controller.js";
 import { getSubDocument } from "./subDocument/subdocument.js";
 
 export const documentRoute = Router();
@@ -48,6 +48,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 documentRoute.post("/add-document", upload.array("files"), asyncHandler(addDocument));
+
+documentRoute.post("/add-more-document", upload.array("files"), asyncHandler(addMoreDocument));
 
 documentRoute.get("/get-document", getDocument);
 

@@ -4,6 +4,28 @@ import jwt from "jsonwebtoken";
 import { CnrDetail } from "../case.model.js";
 import { User } from "../../users/user.model.js";
 
+function parseDate(dateString) {
+  if (!dateString) return null;
+  try {
+    const cleanDateString = dateString.replace(/(\d+)(st|nd|rd|th)/i, "$1");
+    return new Date(cleanDateString);
+  } catch (error) {
+    console.error("Error parsing date:", error.message);
+    return null;
+  }
+}
+
+function cleanPetitionerName(petitionerString) {
+  if (!petitionerString) return null;
+  try {
+    const nameMatch = petitionerString.match(/^\d+\)\s*([^-]+)/);
+    return nameMatch ? nameMatch[1].trim() : null;
+  } catch (error) {
+    console.error("Error cleaning petitioner name:", error.message);
+    return null;
+  }
+}
+
 export const getSubCnrDetails = async (req, res) => {
   const { token } = req.headers;
   const {
