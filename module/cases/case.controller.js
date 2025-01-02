@@ -636,8 +636,8 @@ export const getSingleCnr = async (req, res) => {
   const { token } = req.headers;
   if (!token) {
     return res
-     .status(401)
-     .json({ success: false, message: "Unauthorized: Token is missing." });
+      .status(401)
+      .json({ success: false, message: "Unauthorized: Token is missing." });
   }
   try {
     const tokenParts = token.split(" ");
@@ -656,9 +656,9 @@ export const getSingleCnr = async (req, res) => {
         .json({ success: false, message: "No Cnr details found." });
     }
     const jointUsers = cnrDetail.userId
-    .filter((user) => user.userId === userId)
-    .flatMap((user) => user.jointUser || []);
-    return res.status(200).json({ success: true, data: cnrDetail,jointUsers });
+      .filter((user) => user.userId === userId)
+      .flatMap((user) => user.jointUser || []);
+    return res.status(200).json({ success: true, data: cnrDetail, jointUsers });
   } catch (error) {
     console.error("Error getting single Cnr:", error.message);
     return res.status(500).json({ success: false, message: "Server error." });
