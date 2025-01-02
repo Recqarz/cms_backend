@@ -91,9 +91,26 @@ export const getSubCnrDetails = async (req, res) => {
         message: "No CNR details found.",
       });
     }
-    let sortedData = data;
+    const updatedData = await Promise.all(
+      data.map(async (item) => {
+        const itemObject = item?.toObject() || {};
+
+        const userIdObj = itemObject.userId?.find((u) =>
+          u?.jointUser?.some((j) => j?.email === curruser?.email)
+        );
+
+        if (userIdObj?.userId) {
+          const user = (await User.findById(userIdObj.userId).lean()) || {};
+          itemObject.mainUserId = userIdObj.userId;
+          itemObject.mainUserName = user.name || "";
+        }
+
+        return itemObject;
+      })
+    );
+    let sortedData = updatedData;
     if (nextHearing === "1" || nextHearing === "-1") {
-      sortedData = data.sort((a, b) => {
+      sortedData = updatedData.sort((a, b) => {
         const dateA = parseDate(a.caseStatus?.[1]?.[1]);
         const dateB = parseDate(b.caseStatus?.[1]?.[1]);
         if (!dateA || !dateB) return 0;
@@ -208,9 +225,26 @@ export const getDisposedSubCnrDetails = async (req, res) => {
         message: "No CNR details found.",
       });
     }
-    let sortedData = data;
+    const updatedData = await Promise.all(
+      data.map(async (item) => {
+        const itemObject = item?.toObject() || {};
+
+        const userIdObj = itemObject.userId?.find((u) =>
+          u?.jointUser?.some((j) => j?.email === curruser?.email)
+        );
+
+        if (userIdObj?.userId) {
+          const user = (await User.findById(userIdObj.userId).lean()) || {};
+          itemObject.mainUserId = userIdObj.userId;
+          itemObject.mainUserName = user.name || "";
+        }
+
+        return itemObject;
+      })
+    );
+    let sortedData = updatedData;
     if (nextHearing === "1" || nextHearing === "-1") {
-      sortedData = data.sort((a, b) => {
+      sortedData = updatedData.sort((a, b) => {
         const dateA = parseDate(a.caseStatus?.[1]?.[1]);
         const dateB = parseDate(b.caseStatus?.[1]?.[1]);
         if (!dateA || !dateB) return 0;
@@ -269,7 +303,7 @@ export const getSingleSubCnr = async (req, res) => {
         .status(404)
         .json({ success: false, message: "No Cnr details found." });
     }
-    return res.status(200).json({ success: true, data: cnrDetail});
+    return res.status(200).json({ success: true, data: cnrDetail });
   } catch (error) {
     console.error("Error getting single Cnr:", error.message);
     return res.status(500).json({ success: false, message: "Server error." });
