@@ -4,23 +4,20 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { addDocument, addMoreDocument, deleteDocument, getDocument, getDocumentOfSingleCnr, getDocumentOfSingleSubCnr } from "./document.controller.js";
-import { getSubDocument } from "./subDocument/subdocument.js";
+import {
+  addDocument,
+  addMoreDocument,
+  deleteDocument,
+  getDocument,
+  getDocumentOfSingleCnr,
+  getDocumentOfSingleSubCnr,
+} from "./document.controller.js";
+import { addSubDocument, getSubDocument } from "./subDocument/subdocument.js";
 
 export const documentRoute = Router();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// const fileFilter = (req, file, cb) => {
-//   const allowedMimeTypes = ["application/pdf"];
-
-//   if (allowedMimeTypes.includes(file.mimetype)) {
-//     cb(null, true);
-//   } else {
-//     cb(new Error("Invalid file type. Only PDF files are allowed."), false);
-//   }
-// };
 
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
@@ -47,9 +44,23 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-documentRoute.post("/add-document", upload.array("files"), asyncHandler(addDocument));
+documentRoute.post(
+  "/add-document",
+  upload.array("files"),
+  asyncHandler(addDocument)
+);
 
-documentRoute.post("/add-more-document", upload.array("files"), asyncHandler(addMoreDocument));
+documentRoute.post(
+  "/add-sub-document",
+  upload.array("files"),
+  asyncHandler(addSubDocument)
+);
+
+documentRoute.post(
+  "/add-more-document",
+  upload.array("files"),
+  asyncHandler(addMoreDocument)
+);
 
 documentRoute.get("/get-document", getDocument);
 
@@ -57,6 +68,12 @@ documentRoute.delete("/delete-document", deleteDocument);
 
 documentRoute.get("/get-sub-document", getSubDocument);
 
-documentRoute.get("/get-document-of-single-sub-cnr/:cnrNumber", getDocumentOfSingleSubCnr);
+documentRoute.get(
+  "/get-document-of-single-sub-cnr/:cnrNumber",
+  getDocumentOfSingleSubCnr
+);
 
-documentRoute.get("/get-document-of-single-cnr/:cnrNumber", getDocumentOfSingleCnr);
+documentRoute.get(
+  "/get-document-of-single-cnr/:cnrNumber",
+  getDocumentOfSingleCnr
+);
