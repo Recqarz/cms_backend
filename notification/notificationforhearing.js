@@ -48,7 +48,6 @@ export const dataToSendNotification11am = async () => {
         hearingDate && hearingDate >= today && hearingDate <= thresholdDate
       );
     });
-
     return filteredCases;
   } catch (error) {
     console.error("Error fetching cases for notification:", error);
@@ -76,7 +75,7 @@ export const dataToSendNotification06am = async () => {
         hearingDate && hearingDate >= today && hearingDate <= thresholdDate
       );
     });
-
+    console.log(filteredCases)
     return filteredCases;
   } catch (error) {
     console.error("Error fetching cases for notification:", error);
@@ -285,7 +284,7 @@ export const notificationSender11am = async () => {
         let hearingDate = caseData?.caseStatus[1][1];
         let cnrNumber = caseData?.cnrNumber;
         let previousHearingDate =
-          caseData?.caseHistory[caseData?.caseHistory.length - 1][2] || "NA";
+          caseData?.caseHistory[caseData?.caseHistory.length - 1][1] || "NA";
         await verifyUserAndSendNotification(
           users,
           datediff,
@@ -322,7 +321,7 @@ export const notificationSender06am = async () => {
         let hearingDate = caseData?.caseStatus[1][1];
         let cnrNumber = caseData?.cnrNumber;
         let previousHearingDate =
-          caseData?.caseHistory[caseData?.caseHistory.length - 1][2] || "NA";
+          caseData?.caseHistory[caseData?.caseHistory.length - 1][1] || "NA";
         await verifyUserAndSendNotification(
           users,
           datediff,
