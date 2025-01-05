@@ -8,6 +8,137 @@ import xlsx from "xlsx";
 import { ExternalUser } from "../externalUser/externaluser.model.js";
 import { User } from "../users/user.model.js";
 
+const parseDate = (dateString) => {
+  if (!dateString) return null;
+  try {
+    const cleanDateString = dateString.replace(/(\d+)(st|nd|rd|th)/i, "$1").trim();
+    const parsedDate = new Date(cleanDateString);
+    if (isNaN(parsedDate.getTime())) {
+      return null;
+    }
+    
+    return parsedDate;
+  } catch (error) {
+    console.error("Error parsing date:", error.message);
+    return null;
+  }
+};
+
+function cleanPetitionerName(petitionerString) {
+  if (!petitionerString) return null;
+
+  try {
+    const nameMatch = petitionerString.match(/^\d+\)\s*([^-]+)/);
+    if (nameMatch) {
+      return nameMatch[1].trim();
+    }
+    return petitionerString.trim();
+  } catch (error) {
+    console.error("Error cleaning petitioner name:", error.message);
+    return null;
+  }
+}
+
+const validatePaginationParams = (pageNo, pageLimit) => {
+  const parsedPageNo = parseInt(pageNo, 10);
+  const parsedPageLimit = parseInt(pageLimit, 10);
+  if (isNaN(parsedPageNo) || parsedPageNo < 1) {
+    throw new Error('Invalid page number');
+  }
+  if (isNaN(parsedPageLimit) || parsedPageLimit < 1) {
+    throw new Error('Invalid page limit');
+  }
+  return { parsedPageNo, parsedPageLimit };
+};
+
+const applySorting = (data, sortParams) => {
+  const { nextHearing, petitioner, respondent } = sortParams;
+  let sortedData = [...data];
+  try {
+    if (nextHearing === "1" || nextHearing === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const dateA = parseDate(a.caseStatus?.[1]?.[1]);
+        const dateB = parseDate(b.caseStatus?.[1]?.[1]);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return nextHearing === "1" ? dateA - dateB : dateB - dateA;
+      });
+    }
+
+    if (petitioner === "1" || petitioner === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const petitionerA = cleanPetitionerName(a.petitionerAndAdvocate?.[0]?.[0]);
+        const petitionerB = cleanPetitionerName(b.petitionerAndAdvocate?.[0]?.[0]);
+        if (!petitionerA && !petitionerB) return 0;
+        if (!petitionerA) return 1;
+        if (!petitionerB) return -1;
+        return petitioner === "1"
+          ? petitionerA.localeCompare(petitionerB)
+          : petitionerB.localeCompare(petitionerA);
+      });
+    }
+
+    if (respondent === "1" || respondent === "-1") {
+      sortedData = sortedData.sort((a, b) => {
+        const respondentA = cleanPetitionerName(a.respondentAndAdvocate?.[0]?.[0]);
+        const respondentB = cleanPetitionerName(b.respondentAndAdvocate?.[0]?.[0]);
+        if (!respondentA && !respondentB) return 0;
+        if (!respondentA) return 1;
+        if (!respondentB) return -1;
+        return respondent === "1"
+          ? respondentA.localeCompare(respondentB)
+          : respondentB.localeCompare(respondentA);
+      });
+    }
+
+    return sortedData;
+  } catch (error) {
+    console.error("Error during sorting:", error.message);
+    return data;
+  }
+};
+
+const buildFilterQuery = (userId, filterOption, filterText) => {
+  const filterQuery = {
+    "userId.userId": userId,
+  };
+  if (filterOption && filterOption.toLowerCase() !== "all") {
+    const filterMap = {
+      active: {
+        "caseStatus.2.1": { $not: { $regex: /case disposed/i } },
+      },
+      inactive: {
+        "caseStatus.2.1": { $regex: /case disposed/i },
+      },
+    };
+    const selectedFilter = filterMap[filterOption.toLowerCase()];
+    if (selectedFilter) {
+      Object.assign(filterQuery, selectedFilter);
+    }
+  }
+  if (filterText) {
+    const textSearchFields = [
+      "cnrNumber",
+      "caseDetails.CNR Number",
+      "caseDetails.Case Type",
+      "caseDetails.Filing Number",
+      "caseDetails.Registration Number",
+      "firDetails.FIR Number",
+      "firDetails.Police Station",
+      "caseStatus.2.1",
+      "petitionerAndAdvocate.0.0",
+      "respondentAndAdvocate.0.0",
+    ];
+    filterQuery.$or = textSearchFields.map((field) => ({
+      [field]: { 
+        $regex: new RegExp(filterText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), "i") 
+      },
+    }));
+  }
+  return filterQuery;
+};
+
 export const getCnrDetails = async (req, res) => {
   const { token } = req.headers;
   const {
@@ -19,108 +150,61 @@ export const getCnrDetails = async (req, res) => {
     respondent,
   } = req.query;
   const filterOption = "active";
-  if (!token) {
-    return res.status(401).json({ success: false, message: "Unauthorized." });
-  }
+
   try {
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authorization token is required." 
+      });
+    }
     let isVerify;
     try {
       isVerify = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
     } catch (error) {
       console.error("JWT verification error:", error.message);
-      return res.status(401).json({ success: false, message: "Unauthorized." });
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid or expired token." 
+      });
     }
-    const filterQuery = {
-      "userId.userId": isVerify.id,
-    };
-    if (filterOption && filterOption.toLowerCase() !== "all") {
-      const filterMap = {
-        active: {
-          "caseStatus.2.1": { $not: { $regex: /case disposed/i } },
-        },
-        inactive: {
-          "caseStatus.2.1": { $regex: /case disposed/i },
-        },
-      };
-      const selectedFilter = filterMap[filterOption.toLowerCase()];
-      if (selectedFilter) {
-        Object.assign(filterQuery, selectedFilter);
-      }
+    let parsedPageNo, parsedPageLimit;
+    try {
+      const validated = validatePaginationParams(pageNo, pageLimit);
+      parsedPageNo = validated.parsedPageNo;
+      parsedPageLimit = validated.parsedPageLimit;
+    } catch (error) {
+      return res.status(400).json({ 
+        success: false, 
+        message: error.message 
+      });
     }
-    if (filterText) {
-      const textSearchFields = [
-        "cnrNumber",
-        "caseDetails.CNR Number",
-        "caseDetails.Case Type",
-        "caseDetails.Filing Number",
-        "caseDetails.Registration Number",
-        "firDetails.FIR Number",
-        "firDetails.Police Station",
-        "caseStatus.2.1",
-        "petitionerAndAdvocate.0.0",
-        "respondentAndAdvocate.0.0",
-      ];
+    const filterQuery = buildFilterQuery(isVerify.id, filterOption, filterText);
+    const data = await CnrDetail.find(filterQuery).lean().exec();
 
-      filterQuery.$or = textSearchFields.map((field) => ({
-        [field]: { $regex: new RegExp(filterText, "i") },
-      }));
-    }
-    const data = await CnrDetail.find(filterQuery);
     if (!data || data.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No CNR details found.",
+        message: "No CNR details found for the given criteria.",
       });
     }
-    let sortedData = data;
-    if (nextHearing === "1" || nextHearing === "-1") {
-      sortedData = data.sort((a, b) => {
-        const dateA = parseDate(a.caseStatus?.[1]?.[1]);
-        const dateB = parseDate(b.caseStatus?.[1]?.[1]);
-        if (!dateA || !dateB) return 0;
-        return nextHearing === "1" ? dateA - dateB : dateB - dateA;
-      });
-    }
-    if (petitioner === "1" || petitioner === "-1") {
-      sortedData = sortedData.sort((a, b) => {
-        const petitionerA = cleanPetitionerName(
-          a.petitionerAndAdvocate?.[0]?.[0]
-        );
-        const petitionerB = cleanPetitionerName(
-          b.petitionerAndAdvocate?.[0]?.[0]
-        );
-        if (!petitionerA || !petitionerB) return 0;
-        return petitioner === "1"
-          ? petitionerA.localeCompare(petitionerB)
-          : petitionerB.localeCompare(petitionerA);
-      });
-    }
-    if (respondent === "1" || respondent === "-1") {
-      sortedData = sortedData.sort((a, b) => {
-        const respondentA = cleanPetitionerName(
-          a.respondentAndAdvocate?.[0]?.[0]
-        );
-        const respondentB = cleanPetitionerName(
-          b.respondentAndAdvocate?.[0]?.[0]
-        );
-        if (!respondentA || !respondentB) return 0;
-        return respondent === "1"
-          ? respondentA.localeCompare(respondentB)
-          : respondentB.localeCompare(respondentA);
-      });
-    }
-    const startIndex = (parseInt(pageNo, 10) - 1) * parseInt(pageLimit, 10);
-    const endIndex = startIndex + parseInt(pageLimit, 10);
+    const sortedData = applySorting(data, { nextHearing, petitioner, respondent });
+    const startIndex = (parsedPageNo - 1) * parsedPageLimit;
+    const endIndex = startIndex + parsedPageLimit;
     const paginatedData = sortedData.slice(startIndex, endIndex);
     return res.status(200).json({
       success: true,
       data: paginatedData,
-      message: "CNR details found.",
-      pageSize: Math.ceil(sortedData.length / parseInt(pageLimit, 10)),
+      message: "CNR details retrieved successfully.",
+      pageSize: Math.ceil(sortedData.length / parsedPageLimit)
     });
+
   } catch (error) {
-    console.error("Error getting CNR details:", error.stack);
-    return res.status(500).json({ success: false, message: "Server error." });
+    console.error("Error in getCnrDetails:", error.stack);
+    return res.status(500).json({ 
+      success: false, 
+      message: "An internal server error occurred. Please try again later." 
+    });
   }
 };
 
@@ -135,132 +219,64 @@ export const getDisposedCnrDetails = async (req, res) => {
     respondent,
   } = req.query;
   const filterOption = "inactive";
-  if (!token) {
-    return res.status(401).json({ success: false, message: "Unauthorized." });
-  }
+
   try {
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authorization token is required." 
+      });
+    }
     let isVerify;
     try {
       isVerify = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
     } catch (error) {
       console.error("JWT verification error:", error.message);
-      return res.status(401).json({ success: false, message: "Unauthorized." });
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid or expired token." 
+      });
     }
-    const filterQuery = {
-      "userId.userId": isVerify.id,
-    };
-    if (filterOption && filterOption.toLowerCase() !== "all") {
-      const filterMap = {
-        active: {
-          "caseStatus.2.1": { $not: { $regex: /case disposed/i } },
-        },
-        inactive: {
-          "caseStatus.2.1": { $regex: /case disposed/i },
-        },
-      };
-      const selectedFilter = filterMap[filterOption.toLowerCase()];
-      if (selectedFilter) {
-        Object.assign(filterQuery, selectedFilter);
-      }
+    let parsedPageNo, parsedPageLimit;
+    try {
+      const validated = validatePaginationParams(pageNo, pageLimit);
+      parsedPageNo = validated.parsedPageNo;
+      parsedPageLimit = validated.parsedPageLimit;
+    } catch (error) {
+      return res.status(400).json({ 
+        success: false, 
+        message: error.message 
+      });
     }
-    if (filterText) {
-      const textSearchFields = [
-        "cnrNumber",
-        "caseDetails.CNR Number",
-        "caseDetails.Case Type",
-        "caseDetails.Filing Number",
-        "caseDetails.Registration Number",
-        "firDetails.FIR Number",
-        "firDetails.Police Station",
-        "caseStatus.2.1",
-        "petitionerAndAdvocate.0.0",
-        "respondentAndAdvocate.0.0",
-      ];
+    const filterQuery = buildFilterQuery(isVerify.id, filterOption, filterText);
+    const data = await CnrDetail.find(filterQuery).lean().exec();
 
-      filterQuery.$or = textSearchFields.map((field) => ({
-        [field]: { $regex: new RegExp(filterText, "i") },
-      }));
-    }
-    const data = await CnrDetail.find(filterQuery);
     if (!data || data.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No CNR details found.",
+        message: "No CNR details found for the given criteria.",
       });
     }
-    let sortedData = data;
-    if (nextHearing === "1" || nextHearing === "-1") {
-      sortedData = data.sort((a, b) => {
-        const dateA = parseDate(a.caseStatus?.[1]?.[1]);
-        const dateB = parseDate(b.caseStatus?.[1]?.[1]);
-        if (!dateA || !dateB) return 0;
-        return nextHearing === "1" ? dateA - dateB : dateB - dateA;
-      });
-    }
-    if (petitioner === "1" || petitioner === "-1") {
-      sortedData = sortedData.sort((a, b) => {
-        const petitionerA = cleanPetitionerName(
-          a.petitionerAndAdvocate?.[0]?.[0]
-        );
-        const petitionerB = cleanPetitionerName(
-          b.petitionerAndAdvocate?.[0]?.[0]
-        );
-        if (!petitionerA || !petitionerB) return 0;
-        return petitioner === "1"
-          ? petitionerA.localeCompare(petitionerB)
-          : petitionerB.localeCompare(petitionerA);
-      });
-    }
-    if (respondent === "1" || respondent === "-1") {
-      sortedData = sortedData.sort((a, b) => {
-        const respondentA = cleanPetitionerName(
-          a.respondentAndAdvocate?.[0]?.[0]
-        );
-        const respondentB = cleanPetitionerName(
-          b.respondentAndAdvocate?.[0]?.[0]
-        );
-        if (!respondentA || !respondentB) return 0;
-        return respondent === "1"
-          ? respondentA.localeCompare(respondentB)
-          : respondentB.localeCompare(respondentA);
-      });
-    }
-    const startIndex = (parseInt(pageNo, 10) - 1) * parseInt(pageLimit, 10);
-    const endIndex = startIndex + parseInt(pageLimit, 10);
+    const sortedData = applySorting(data, { nextHearing, petitioner, respondent });
+    const startIndex = (parsedPageNo - 1) * parsedPageLimit;
+    const endIndex = startIndex + parsedPageLimit;
     const paginatedData = sortedData.slice(startIndex, endIndex);
     return res.status(200).json({
       success: true,
       data: paginatedData,
-      message: "CNR details found.",
-      pageSize: Math.ceil(sortedData.length / parseInt(pageLimit, 10)),
+      message: "CNR details retrieved successfully.",
+      pageSize: Math.ceil(sortedData.length / parsedPageLimit)
     });
+
   } catch (error) {
-    console.error("Error getting CNR details:", error.stack);
-    return res.status(500).json({ success: false, message: "Server error." });
+    console.error("Error in getCnrDetails:", error.stack);
+    return res.status(500).json({ 
+      success: false, 
+      message: "An internal server error occurred. Please try again later." 
+    });
   }
 };
 
-function parseDate(dateString) {
-  if (!dateString) return null;
-  try {
-    const cleanDateString = dateString.replace(/(\d+)(st|nd|rd|th)/i, "$1");
-    return new Date(cleanDateString);
-  } catch (error) {
-    console.error("Error parsing date:", error.message);
-    return null;
-  }
-}
-
-function cleanPetitionerName(petitionerString) {
-  if (!petitionerString) return null;
-  try {
-    const nameMatch = petitionerString.match(/^\d+\)\s*([^-]+)/);
-    return nameMatch ? nameMatch[1].trim() : null;
-  } catch (error) {
-    console.error("Error cleaning petitioner name:", error.message);
-    return null;
-  }
-}
 
 export const getUnsavedCnrDetails = async (req, res) => {
   const { token } = req.headers;
