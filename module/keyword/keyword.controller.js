@@ -5,6 +5,12 @@ import { Keyword } from "./keyword.model.js";
 
 export const addKeyword = async (req, res) => {
   try {
+    const { token } = req.headers;
+    if (!token) {
+      return res
+        .status(401)
+        .json({ success: false, message: "No token provided." });
+    }
     const { keyword } = req.body;
     if (!keyword) {
       return res
