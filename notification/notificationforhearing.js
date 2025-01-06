@@ -280,11 +280,11 @@ export const notificationSender11am = async () => {
           cleanFirstLine(caseData?.respondentAndAdvocate[0][0]) || "";
         const cleanedPetitioner =
           cleanFirstLine(caseData?.petitionerAndAdvocate[0][0]) || "";
-        let caseTitled = `${cleanedRespondent} VS ${cleanedPetitioner}`;
+        let caseTitled = `${cleanedPetitioner} VS ${cleanedRespondent}`;
         let hearingDate = caseData?.caseStatus[1][1];
         let cnrNumber = caseData?.cnrNumber;
-        let previousHearingDate =
-          caseData?.caseHistory[caseData?.caseHistory.length - 1][1] || "NA";
+        let previousHearingDate =  caseData?.caseHistory.length>1 ?
+          caseData?.caseHistory[caseData?.caseHistory.length - 1][1] : "NA";
         await verifyUserAndSendNotification(
           users,
           datediff,
@@ -317,11 +317,11 @@ export const notificationSender06am = async () => {
           cleanFirstLine(caseData?.respondentAndAdvocate[0][0]) || "";
         const cleanedPetitioner =
           cleanFirstLine(caseData?.petitionerAndAdvocate[0][0]) || "";
-        let caseTitled = `${cleanedRespondent} VS ${cleanedPetitioner}`;
+        let caseTitled = `${cleanedPetitioner} VS ${cleanedRespondent}`;
         let hearingDate = caseData?.caseStatus[1][1];
         let cnrNumber = caseData?.cnrNumber;
-        let previousHearingDate =
-          caseData?.caseHistory[caseData?.caseHistory.length - 1][1] || "NA";
+        let previousHearingDate =  caseData?.caseHistory.length>1 ?
+          caseData?.caseHistory[caseData?.caseHistory.length - 1][1] : "NA";
         await verifyUserAndSendNotification(
           users,
           datediff,
