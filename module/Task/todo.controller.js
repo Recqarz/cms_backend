@@ -2,6 +2,8 @@ import { Task } from "./todo.model.js";
 import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
+import { CnrDetail } from "../cases/case.model.js";
+import { uploadFileToS3 } from "../document/awsupload/awsupload.js";
 
 export const getTodos = async (req, res) => {
   const { token } = req.headers;
@@ -42,15 +44,17 @@ export const getTodos = async (req, res) => {
 };
 
 export const addTodo = async (req, res) => {
-  const { title, description, dueDate, priority } = req.body;
+  const { title, description, dueDate, priority, cnrNumber } = req.body;
   const { token } = req.headers;
   if (!token) {
+    req.files.forEach((file) => fs.unlinkSync(file.path));
     return res.status(401).json({
       success: false,
       message: "Unauthorized: No token provided",
     });
   }
-  if (!title || !priority || !dueDate || !description) {
+  if (!title || !priority || !dueDate || !description || !cnrNumber) {
+    req.files.forEach((file) => fs.unlinkSync(file.path));
     return res.status(400).json({
       success: false,
       message: "All fields are required",
@@ -60,18 +64,66 @@ export const addTodo = async (req, res) => {
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
     if (!decoded) {
+      req.files.forEach((file) => fs.unlinkSync(file.path));
       return res.status(401).json({
         success: false,
         message: "Unauthorized: Invalid token",
       });
     }
     const userId = decoded.id;
+
+    const cnrExists = await CnrDetail.find({
+      cnrNumber,
+      "userId.userId": userId,
+    });
+
+    if (cnrExists.length <= 0) {
+      req.files.forEach((file) => fs.unlinkSync(file.path));
+      return res.status(404).json({
+        success: false,
+        message: "CNR number not found or does not belong to the current user",
+      });
+    }
+
+    const attachments = [];
+    const fileNames = req.body.fileNames || [];
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
+      const filePath = file.path;
+      const name = Array.isArray(fileNames)
+        ? fileNames[i]
+        : fileNames || file.originalname;
+      try {
+        if (file.size > 50 * 1024 * 1024) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "File size exceeds limit of 50MB",
+            success: false,
+          });
+        }
+        const s3Response = await uploadFileToS3(filePath, file.originalname);
+        attachments.push({
+          name: name,
+          url: s3Response.Location,
+        });
+        fs.unlinkSync(filePath);
+      } catch (uploadError) {
+        console.error("Error uploading file to S3:", uploadError);
+        req.files.forEach((file) => fs.unlinkSync(file.path));
+        return res.status(500).json({
+          message: "Error uploading file to S3",
+          success: false,
+        });
+      }
+    }
+
     const newTask = new Task({
       title,
       description,
       dueDate,
       priority,
       userId,
+      attachments:attachments
     });
     const savedTask = await newTask.save();
     return res.json({
@@ -81,6 +133,7 @@ export const addTodo = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding task:", error);
+    req.files.forEach((file) => fs.unlinkSync(file.path));
     return res.status(500).json({
       success: false,
       message: "Server error: Unable to add task",
