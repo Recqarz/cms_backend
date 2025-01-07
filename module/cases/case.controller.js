@@ -520,7 +520,7 @@ export const AddNewBulkCnr = async (req, res) => {
       return res.status(400).json({ message: "Excel file is empty" });
     }
     for (let i = 0; i < cnrData.length; i++) {
-      const cnrNumber = cnrData[i]?.["CNR NO."];
+      const cnrNumber = cnrData[i]?.["CNR NO."]?.trim();
       if (!cnrNumber) {
         continue;
       }
