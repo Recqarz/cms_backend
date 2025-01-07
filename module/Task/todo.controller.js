@@ -1,9 +1,11 @@
+
 import { Task } from "./todo.model.js";
 import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
 import { CnrDetail } from "../cases/case.model.js";
 import { uploadFileToS3 } from "../document/awsupload/awsupload.js";
+import fs from 'fs';  // Import the fs module
 
 export const getTodos = async (req, res) => {
   const { token } = req.headers;
@@ -15,17 +17,12 @@ export const getTodos = async (req, res) => {
   }
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
     const userId = decoded.id;
-    const lowtasks = await Task.find({ userId , priority:"low"});
-    const mediumtasks = await Task.find({ userId , priority:"medium"});
-    const hightasks = await Task.find({ userId , priority:"high"});
-    if (!lowtasks) {
+    const lowtasks = await Task.find({ userId, priority: "low" });
+    const mediumtasks = await Task.find({ userId, priority: "medium" });
+    const hightasks = await Task.find({ userId, priority: "high" });
+
+    if (lowtasks.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No tasks found for this user",
@@ -67,13 +64,6 @@ export const addTodo = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      req.files.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
     const userId = decoded.id;
 
     const cnrExists = await CnrDetail.find({
@@ -90,13 +80,11 @@ export const addTodo = async (req, res) => {
     }
 
     const attachments = [];
-    const fileNames = req.body.fileNames || [];
+    const fileNames = Array.isArray(req.body.fileNames) ? req.body.fileNames : [];
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
       const filePath = file.path;
-      const name = Array.isArray(fileNames)
-        ? fileNames[i]
-        : fileNames || file.originalname;
+      const name = fileNames[i] || file.originalname;
       try {
         if (file.size > 50 * 1024 * 1024) {
           fs.unlinkSync(filePath);
@@ -127,7 +115,7 @@ export const addTodo = async (req, res) => {
       dueDate,
       priority,
       userId,
-      attachments:attachments
+      attachments,
     });
     const savedTask = await newTask.save();
     return res.json({
@@ -164,12 +152,6 @@ export const editTodo = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
     const userId = decoded.id;
     const updatedTask = await Task.findByIdAndUpdate(
       id,
@@ -207,12 +189,7 @@ export const deleteTodo = async (req, res) => {
   }
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
+    const userId = decoded.id;
     const deletedTask = await Task.findByIdAndDelete(id);
     if (!deletedTask) {
       return res.status(404).json({
@@ -232,3 +209,4 @@ export const deleteTodo = async (req, res) => {
     });
   }
 };
+
