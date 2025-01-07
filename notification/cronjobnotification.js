@@ -5,10 +5,10 @@ import {
 } from "./notificationforhearing.js";
 
 export function sendHearingNotification() {
-  cron.schedule("0 11 * * *", () => {
+  cron.schedule("30 5 * * *", () => {
     notificationSender11am();
   });
-  cron.schedule("0 06 * * *", () => {
+  cron.schedule("30 0 * * *", () => {
     notificationSender06am();
   });
 }
