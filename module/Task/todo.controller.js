@@ -1,7 +1,11 @@
+
 import { Task } from "./todo.model.js";
 import dotenv from "dotenv";
 dotenv.config();
 import jwt from "jsonwebtoken";
+import { CnrDetail } from "../cases/case.model.js";
+import { uploadFileToS3 } from "../document/awsupload/awsupload.js";
+import fs from 'fs';  // Import the fs module
 
 export const getTodos = async (req, res) => {
   const { token } = req.headers;
@@ -13,17 +17,12 @@ export const getTodos = async (req, res) => {
   }
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
     const userId = decoded.id;
-    const lowtasks = await Task.find({ userId , priority:"low"});
-    const mediumtasks = await Task.find({ userId , priority:"medium"});
-    const hightasks = await Task.find({ userId , priority:"high"});
-    if (!lowtasks) {
+    const lowtasks = await Task.find({ userId, priority: "low" });
+    const mediumtasks = await Task.find({ userId, priority: "medium" });
+    const hightasks = await Task.find({ userId, priority: "high" });
+
+    if (lowtasks.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No tasks found for this user",
@@ -46,15 +45,17 @@ export const getTodos = async (req, res) => {
 };
 
 export const addTodo = async (req, res) => {
-  const { title, description, dueDate, priority } = req.body;
+  const { title, description, dueDate, priority, cnrNumber } = req.body;
   const { token } = req.headers;
   if (!token) {
+    req.files.forEach((file) => fs.unlinkSync(file.path));
     return res.status(401).json({
       success: false,
       message: "Unauthorized: No token provided",
     });
   }
-  if (!title || !priority || !dueDate || !description) {
+  if (!title || !priority || !dueDate || !description || !cnrNumber) {
+    req.files.forEach((file) => fs.unlinkSync(file.path));
     return res.status(400).json({
       success: false,
       message: "All fields are required",
@@ -63,19 +64,58 @@ export const addTodo = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
+    const userId = decoded.id;
+
+    const cnrExists = await CnrDetail.find({
+      cnrNumber,
+      "userId.userId": userId,
+    });
+
+    if (cnrExists.length <= 0) {
+      req.files.forEach((file) => fs.unlinkSync(file.path));
+      return res.status(404).json({
         success: false,
-        message: "Unauthorized: Invalid token",
+        message: "CNR number not found or does not belong to the current user",
       });
     }
-    const userId = decoded.id;
+
+    const attachments = [];
+    const fileNames = Array.isArray(req.body.fileNames) ? req.body.fileNames : [];
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
+      const filePath = file.path;
+      const name = fileNames[i] || file.originalname;
+      try {
+        if (file.size > 50 * 1024 * 1024) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "File size exceeds limit of 50MB",
+            success: false,
+          });
+        }
+        const s3Response = await uploadFileToS3(filePath, file.originalname);
+        attachments.push({
+          name: name,
+          url: s3Response.Location,
+        });
+        fs.unlinkSync(filePath);
+      } catch (uploadError) {
+        console.error("Error uploading file to S3:", uploadError);
+        req.files.forEach((file) => fs.unlinkSync(file.path));
+        return res.status(500).json({
+          message: "Error uploading file to S3",
+          success: false,
+        });
+      }
+    }
+
     const newTask = new Task({
       title,
       description,
       dueDate,
       priority,
       userId,
+      attachments,
     });
     const savedTask = await newTask.save();
     return res.json({
@@ -85,6 +125,7 @@ export const addTodo = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding task:", error);
+    req.files.forEach((file) => fs.unlinkSync(file.path));
     return res.status(500).json({
       success: false,
       message: "Server error: Unable to add task",
@@ -111,12 +152,6 @@ export const editTodo = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
     const userId = decoded.id;
     const updatedTask = await Task.findByIdAndUpdate(
       id,
@@ -154,12 +189,7 @@ export const deleteTodo = async (req, res) => {
   }
   try {
     const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid token",
-      });
-    }
+    const userId = decoded.id;
     const deletedTask = await Task.findByIdAndDelete(id);
     if (!deletedTask) {
       return res.status(404).json({
@@ -179,3 +209,4 @@ export const deleteTodo = async (req, res) => {
     });
   }
 };
+

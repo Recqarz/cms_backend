@@ -1,30 +1,33 @@
-import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
-export const sendOtptoEmail = async (user, otp) => {
-  const html = `
-      Your OTP for Sandhee Platform is ${otp}. It is valid for 5 minutes. Please do not share it with anyone. Team SANDHEE (RecQARZ)
-    `;
+import nodemailer from "nodemailer";
 
-  const emailData = {
-    sender: {
-      name: process.env.BREVO_SENDER_NAME,
-      email: process.env.BREVO_SENDER_EMAIL,
+export function sendOtptoEmail(user, otp) {
+  const outlookEmail = process.env.OUTLOOK_EMAIL;
+  const outlookPassword = process.env.OUTLOOK_PASSWORD;
+  const fromEmail = process.env.FROMEMAIL
+  const subject = "Your one time password for Secure Access";
+  const body = `Your verification code is: ${otp}. CMS_RecQARZ`;
+  const transporter = nodemailer.createTransport({
+    host: "smtp.office365.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: outlookEmail,
+      pass: outlookPassword,
     },
-    to: [{ email: user.email, name: user.name }],
-    subject: "OTP of CMS Platform",
-    htmlContent: html,
+  });
+  const mailOptions = {
+    from: fromEmail,
+    to: user.email,
+    subject: subject,
+    text: body,
   };
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      return console.error(`Failed to send email: ${error}`);
+    }
+    console.log(`Email sent successfully: ${info.response}`);
+  });
+}
 
-  try {
-    await axios.post("https://api.brevo.com/v3/smtp/email", emailData, {
-      headers: {
-        accept: "application/json",
-        "api-key": process.env.BREVO_SENDER_API_KEY,
-        "content-type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error sending OTP to email:", error.message);
-  }
-};
