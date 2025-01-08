@@ -11,12 +11,14 @@ import { User } from "../users/user.model.js";
 const parseDate = (dateString) => {
   if (!dateString) return null;
   try {
-    const cleanDateString = dateString.replace(/(\d+)(st|nd|rd|th)/i, "$1").trim();
+    const cleanDateString = dateString
+      .replace(/(\d+)(st|nd|rd|th)/i, "$1")
+      .trim();
     const parsedDate = new Date(cleanDateString);
     if (isNaN(parsedDate.getTime())) {
       return null;
     }
-    
+
     return parsedDate;
   } catch (error) {
     console.error("Error parsing date:", error.message);
@@ -43,10 +45,10 @@ const validatePaginationParams = (pageNo, pageLimit) => {
   const parsedPageNo = parseInt(pageNo, 10);
   const parsedPageLimit = parseInt(pageLimit, 10);
   if (isNaN(parsedPageNo) || parsedPageNo < 1) {
-    throw new Error('Invalid page number');
+    throw new Error("Invalid page number");
   }
   if (isNaN(parsedPageLimit) || parsedPageLimit < 1) {
-    throw new Error('Invalid page limit');
+    throw new Error("Invalid page limit");
   }
   return { parsedPageNo, parsedPageLimit };
 };
@@ -68,8 +70,12 @@ const applySorting = (data, sortParams) => {
 
     if (petitioner === "1" || petitioner === "-1") {
       sortedData = sortedData.sort((a, b) => {
-        const petitionerA = cleanPetitionerName(a.petitionerAndAdvocate?.[0]?.[0]);
-        const petitionerB = cleanPetitionerName(b.petitionerAndAdvocate?.[0]?.[0]);
+        const petitionerA = cleanPetitionerName(
+          a.petitionerAndAdvocate?.[0]?.[0]
+        );
+        const petitionerB = cleanPetitionerName(
+          b.petitionerAndAdvocate?.[0]?.[0]
+        );
         if (!petitionerA && !petitionerB) return 0;
         if (!petitionerA) return 1;
         if (!petitionerB) return -1;
@@ -81,8 +87,12 @@ const applySorting = (data, sortParams) => {
 
     if (respondent === "1" || respondent === "-1") {
       sortedData = sortedData.sort((a, b) => {
-        const respondentA = cleanPetitionerName(a.respondentAndAdvocate?.[0]?.[0]);
-        const respondentB = cleanPetitionerName(b.respondentAndAdvocate?.[0]?.[0]);
+        const respondentA = cleanPetitionerName(
+          a.respondentAndAdvocate?.[0]?.[0]
+        );
+        const respondentB = cleanPetitionerName(
+          b.respondentAndAdvocate?.[0]?.[0]
+        );
         if (!respondentA && !respondentB) return 0;
         if (!respondentA) return 1;
         if (!respondentB) return -1;
@@ -131,8 +141,11 @@ const buildFilterQuery = (userId, filterOption, filterText) => {
       "respondentAndAdvocate.0.0",
     ];
     filterQuery.$or = textSearchFields.map((field) => ({
-      [field]: { 
-        $regex: new RegExp(filterText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), "i") 
+      [field]: {
+        $regex: new RegExp(
+          filterText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"),
+          "i"
+        ),
       },
     }));
   }
@@ -153,9 +166,9 @@ export const getCnrDetails = async (req, res) => {
 
   try {
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Authorization token is required." 
+      return res.status(401).json({
+        success: false,
+        message: "Authorization token is required.",
       });
     }
     let isVerify;
@@ -163,9 +176,9 @@ export const getCnrDetails = async (req, res) => {
       isVerify = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
     } catch (error) {
       console.error("JWT verification error:", error.message);
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid or expired token." 
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired token.",
       });
     }
     let parsedPageNo, parsedPageLimit;
@@ -174,9 +187,9 @@ export const getCnrDetails = async (req, res) => {
       parsedPageNo = validated.parsedPageNo;
       parsedPageLimit = validated.parsedPageLimit;
     } catch (error) {
-      return res.status(400).json({ 
-        success: false, 
-        message: error.message 
+      return res.status(400).json({
+        success: false,
+        message: error.message,
       });
     }
     const filterQuery = buildFilterQuery(isVerify.id, filterOption, filterText);
@@ -188,22 +201,32 @@ export const getCnrDetails = async (req, res) => {
         message: "No CNR details found for the given criteria.",
       });
     }
-    const sortedData = applySorting(data, { nextHearing, petitioner, respondent });
+    const sortedData = applySorting(data, {
+      nextHearing,
+      petitioner,
+      respondent,
+    });
     const startIndex = (parsedPageNo - 1) * parsedPageLimit;
     const endIndex = startIndex + parsedPageLimit;
     const paginatedData = sortedData.slice(startIndex, endIndex);
+    for (let i = 0; i < paginatedData.length; i++) {
+      const userArray = paginatedData[i].userId;
+      const customer = userArray
+        .filter((user) => user.userId === isVerify.id)
+        .flatMap((user) => user.customer || []);
+      paginatedData[i].customer = customer;
+    }
     return res.status(200).json({
       success: true,
       data: paginatedData,
       message: "CNR details retrieved successfully.",
-      pageSize: Math.ceil(sortedData.length / parsedPageLimit)
+      pageSize: Math.ceil(sortedData.length / parsedPageLimit),
     });
-
   } catch (error) {
     console.error("Error in getCnrDetails:", error.stack);
-    return res.status(500).json({ 
-      success: false, 
-      message: "An internal server error occurred. Please try again later." 
+    return res.status(500).json({
+      success: false,
+      message: "An internal server error occurred. Please try again later.",
     });
   }
 };
@@ -222,9 +245,9 @@ export const getDisposedCnrDetails = async (req, res) => {
 
   try {
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Authorization token is required." 
+      return res.status(401).json({
+        success: false,
+        message: "Authorization token is required.",
       });
     }
     let isVerify;
@@ -232,9 +255,9 @@ export const getDisposedCnrDetails = async (req, res) => {
       isVerify = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
     } catch (error) {
       console.error("JWT verification error:", error.message);
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid or expired token." 
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired token.",
       });
     }
     let parsedPageNo, parsedPageLimit;
@@ -243,9 +266,9 @@ export const getDisposedCnrDetails = async (req, res) => {
       parsedPageNo = validated.parsedPageNo;
       parsedPageLimit = validated.parsedPageLimit;
     } catch (error) {
-      return res.status(400).json({ 
-        success: false, 
-        message: error.message 
+      return res.status(400).json({
+        success: false,
+        message: error.message,
       });
     }
     const filterQuery = buildFilterQuery(isVerify.id, filterOption, filterText);
@@ -257,26 +280,35 @@ export const getDisposedCnrDetails = async (req, res) => {
         message: "No CNR details found for the given criteria.",
       });
     }
-    const sortedData = applySorting(data, { nextHearing, petitioner, respondent });
+    const sortedData = applySorting(data, {
+      nextHearing,
+      petitioner,
+      respondent,
+    });
     const startIndex = (parsedPageNo - 1) * parsedPageLimit;
     const endIndex = startIndex + parsedPageLimit;
     const paginatedData = sortedData.slice(startIndex, endIndex);
+    for (let i = 0; i < paginatedData.length; i++) {
+      const userArray = paginatedData[i].userId;
+      const customer = userArray
+        .filter((user) => user.userId === isVerify.id)
+        .flatMap((user) => user.customer || []);
+      paginatedData[i].customer = customer;
+    }
     return res.status(200).json({
       success: true,
       data: paginatedData,
       message: "CNR details retrieved successfully.",
-      pageSize: Math.ceil(sortedData.length / parsedPageLimit)
+      pageSize: Math.ceil(sortedData.length / parsedPageLimit),
     });
-
   } catch (error) {
     console.error("Error in getCnrDetails:", error.stack);
-    return res.status(500).json({ 
-      success: false, 
-      message: "An internal server error occurred. Please try again later." 
+    return res.status(500).json({
+      success: false,
+      message: "An internal server error occurred. Please try again later.",
     });
   }
 };
-
 
 export const getUnsavedCnrDetails = async (req, res) => {
   const { token } = req.headers;
@@ -348,7 +380,29 @@ export const AddNewSingleCnr = async (req, res) => {
       .status(401)
       .json({ success: false, message: "Unauthorized: Token is missing." });
   }
-  const { cnrNumber, externalUserName, externalUserId, jointUser } = req.body;
+  let { cnrNumber, externalUserName, externalUserId, jointUser, customer } =
+    req.body;
+  jointUser = jointUser
+    .filter((ele) => ele.email && ele.mobile)
+    .map((ele) => ({
+      name: ele?.name || "",
+      email: ele?.email,
+      mobile: ele?.mobile,
+      dayBeforeNotification: Math.min(
+        parseInt(ele?.dayBeforeNotification) || 4,
+        4
+      ),
+    }));
+
+  customer = customer
+    .filter((ele) => (ele.email || ele.mobile) && ele.loandId)
+    .map((ele) => ({
+      name: ele?.name || "",
+      email: ele?.email || "",
+      mobile: ele?.mobile || "",
+      loanId: ele?.loanId,
+      address: ele?.address || "",
+    }));
   if (!cnrNumber || !externalUserName || !externalUserId) {
     return res.status(400).json({
       success: false,
@@ -369,7 +423,9 @@ export const AddNewSingleCnr = async (req, res) => {
     if (cnrNumber.length !== 16) {
       const newCnr = new UnsavedCnr({
         cnrNumber,
-        userId: [{ userId, externalUserName, externalUserId, jointUser }],
+        userId: [
+          { userId, externalUserName, externalUserId, jointUser, customer },
+        ],
         status: "invalidcnr",
       });
       await newCnr.save();
@@ -403,6 +459,7 @@ export const AddNewSingleCnr = async (req, res) => {
         externalUserName,
         externalUserId,
         jointUser,
+        customer,
       });
       await existingCnr.save();
       const unsavedCnrs = await UnsavedCnr.findOne({ cnrNumber });
@@ -416,13 +473,16 @@ export const AddNewSingleCnr = async (req, res) => {
             externalUserName,
             externalUserId,
             jointUser,
+            customer,
           });
           await unsavedCnrs.save();
         }
       } else {
         const newCnr = new UnsavedCnr({
           cnrNumber,
-          userId: [{ userId, externalUserName, externalUserId, jointUser }],
+          userId: [
+            { userId, externalUserName, externalUserId, jointUser, customer },
+          ],
           status: "processed",
         });
         await newCnr.save();
@@ -451,6 +511,7 @@ export const AddNewSingleCnr = async (req, res) => {
         externalUserName,
         externalUserId,
         jointUser,
+        customer,
       });
       unsavedCnr.status = "priority";
       await unsavedCnr.save();
@@ -461,7 +522,9 @@ export const AddNewSingleCnr = async (req, res) => {
     }
     const newCnr = new UnsavedCnr({
       cnrNumber,
-      userId: [{ userId, externalUserName, externalUserId, jointUser }],
+      userId: [
+        { userId, externalUserName, externalUserId, jointUser, customer },
+      ],
       status: "priority",
     });
     // create the joint userId and send the email to the joint user
@@ -545,11 +608,32 @@ export const AddNewBulkCnr = async (req, res) => {
           });
         }
       }
-      // create the joint user id and send to the joint user
+
+      const customer = [];
+
+      for (let k = 1; k <= 4; k++) {
+        const customerData = cnrData[k] || {}; 
+        const name = customerData[`customer${k}name`] || "";
+        const email = customerData[`customer${k}email`] || "";
+        const mobile = customerData[`customer${k}mobile`] || "";
+        const loanId = customerData[`customer${k}loanid`] || "";
+        const address = customerData[`customer${k}address`] || "";
+        if ((email || mobile) && loanId) {
+          customer.push({
+            name: String(name),
+            email: String(email),
+            mobile: String(mobile),
+            loanId: String(loanId),
+            address: String(address),
+          });
+        }
+      }
       if (cnrNumber.length !== 16) {
         const newCnr = new UnsavedCnr({
           cnrNumber,
-          userId: [{ userId, externalUserName, externalUserId, jointUser }],
+          userId: [
+            { userId, externalUserName, externalUserId, jointUser, customer },
+          ],
           status: "invalidcnr",
         });
         await newCnr.save();
@@ -576,6 +660,7 @@ export const AddNewBulkCnr = async (req, res) => {
           externalUserName: externalUserName,
           externalUserId: externalUserId,
           jointUser,
+          customer,
         };
         cnrDetail.userId.push(obj);
         await cnrDetail.save();
@@ -590,13 +675,16 @@ export const AddNewBulkCnr = async (req, res) => {
               externalUserName,
               externalUserId,
               jointUser,
+              customer,
             });
             await unsavedCnrs.save();
           }
         } else {
           const newCnr = new UnsavedCnr({
             cnrNumber,
-            userId: [{ userId, externalUserName, externalUserId, jointUser }],
+            userId: [
+              { userId, externalUserName, externalUserId, jointUser, customer },
+            ],
             status: "processed",
           });
           await newCnr.save();
@@ -618,6 +706,7 @@ export const AddNewBulkCnr = async (req, res) => {
             externalUserName,
             externalUserId,
             jointUser,
+            customer,
           });
           newCnrDetail.status = "pending";
           await newCnrDetail.save();
@@ -627,7 +716,9 @@ export const AddNewBulkCnr = async (req, res) => {
         } else {
           const newCnr = new UnsavedCnr({
             cnrNumber,
-            userId: [{ userId, externalUserName, externalUserId, jointUser }],
+            userId: [
+              { userId, externalUserName, externalUserId, jointUser, customer },
+            ],
             status: "pending",
           });
           await newCnr.save();
@@ -674,7 +765,12 @@ export const getSingleCnr = async (req, res) => {
     const jointUsers = cnrDetail.userId
       .filter((user) => user.userId === userId)
       .flatMap((user) => user.jointUser || []);
-    return res.status(200).json({ success: true, data: cnrDetail, jointUsers });
+    const customer = cnrDetail.userId
+      .filter((user) => user.userId === userId)
+      .flatMap((user) => user.customer || []);
+    return res
+      .status(200)
+      .json({ success: true, data: cnrDetail, jointUsers, customer });
   } catch (error) {
     console.error("Error getting single Cnr:", error.message);
     return res.status(500).json({ success: false, message: "Server error." });
