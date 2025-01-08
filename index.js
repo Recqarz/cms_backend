@@ -20,6 +20,7 @@ app.get("/api", (req, res) => {
   res.json({ message: "Server health is good" });
 });
 
+
 app.use("/api", allRoutes);
 
 const port = process.env.PORT;
