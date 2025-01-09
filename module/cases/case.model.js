@@ -57,6 +57,10 @@ const cnrSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  lastUpdated:{
+    type:String,
+    default:"",
+  }
 },{timestamps:true});
 
 export const CnrDetail = mongoose.model("CnrDetail", cnrSchema);

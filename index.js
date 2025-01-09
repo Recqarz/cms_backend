@@ -9,6 +9,7 @@ import { dataUpdater } from "./crons/cronjob.js";
 import { cleanUpTempResetStorageofall } from "./module/users/cronJob/cronJob.js";
 import { cleanUpArchiveCnr } from "./module/cases/autodeletecron/autodeletecron.job.js";
 import { sendHearingNotification } from "./notification/cronjobnotification.js";
+import { autoUpdateCnrAndSendOrderSheet } from "./autoUpdateCnr/cronjob.js";
 
 const app = express();
 
@@ -34,6 +35,7 @@ dataUpdater();
 cleanUpTempResetStorageofall();
 cleanUpArchiveCnr();
 sendHearingNotification();
+autoUpdateCnrAndSendOrderSheet()
 
 app.listen(port, async () => {
   console.log(`server is running on port ${port}`);

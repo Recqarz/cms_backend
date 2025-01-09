@@ -6,7 +6,7 @@ const todoSchema = new mongoose.Schema(
     description: { type: String },
     status: {
       type: String,
-      enum: ["pending", "inProgress", "completed"],
+      enum: ["pending", "inProgress", "completed","expired"],
       default: "pending",
     },
     dueDate: { type: Date },
@@ -19,10 +19,14 @@ const todoSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    attachments:{
+    attachments: {
       type: [],
-      default: []
-    }
+      default: [],
+    },
+    cnrNumber: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );
