@@ -4,6 +4,7 @@ dotenv.config();
 import jwt from "jsonwebtoken";
 import { CnrDetail } from "../cases/case.model.js";
 import { uploadFileToS3 } from "../document/awsupload/awsupload.js";
+import fs from "fs";
 
 export const getTodos = async (req, res) => {
   const { token } = req.headers;
@@ -22,16 +23,74 @@ export const getTodos = async (req, res) => {
       });
     }
     const userId = decoded.id;
-    const tasks = await Task.find({ userId });
-    if (!tasks) {
-      return res.status(404).json({
-        success: false,
-        message: "No tasks found for this user",
-      });
-    }
+    const lowTasks = await Task.find({
+      userId,
+      priority: "low",
+      status: { $ne: "expired" },
+    });
+    const mediumTasks = await Task.find({
+      userId,
+      priority: "medium",
+      status: { $ne: "expired" },
+    });
+    const highTasks = await Task.find({
+      userId,
+      priority: "high",
+      status: { $ne: "expired" },
+    });
     return res.json({
       success: true,
-      data: tasks,
+      lowTasks,
+      mediumTasks,
+      highTasks,
+      message: "Tasks retrieved successfully",
+    });
+  } catch (error) {
+    console.error("Error retrieving tasks:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error: Unable to retrieve tasks",
+    });
+  }
+};
+
+export const getExpireTodos = async (req, res) => {
+  const { token } = req.headers;
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized: No token provided",
+    });
+  }
+  try {
+    const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Invalid token",
+      });
+    }
+    const userId = decoded.id;
+    const lowTasks = await Task.find({
+      userId,
+      priority: "low",
+      status: "expired",
+    });
+    const mediumTasks = await Task.find({
+      userId,
+      priority: "medium",
+      status: "expired",
+    });
+    const highTasks = await Task.find({
+      userId,
+      priority: "high",
+      status: "expired",
+    });
+    return res.json({
+      success: true,
+      lowTasks,
+      mediumTasks,
+      highTasks,
       message: "Tasks retrieved successfully",
     });
   } catch (error) {
@@ -123,7 +182,8 @@ export const addTodo = async (req, res) => {
       dueDate,
       priority,
       userId,
-      attachments:attachments
+      attachments: attachments,
+      cnrNumber,
     });
     const savedTask = await newTask.save();
     return res.json({
@@ -167,11 +227,70 @@ export const editTodo = async (req, res) => {
       });
     }
     const userId = decoded.id;
-    const updatedTask = await Task.findByIdAndUpdate(
-      id,
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, userId },
       { title, description, status, dueDate, priority },
       { new: true }
     );
+
+    if (!updatedTask) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found for this user",
+      });
+    }
+    return res.json({
+      success: true,
+      data: updatedTask,
+      message: "Task updated successfully",
+    });
+  } catch (error) {
+    console.error("Error editing task:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error: Unable to edit task",
+    });
+  }
+};
+
+export const editExpireTodo = async (req, res) => {
+  const { id } = req.params;
+  const { token } = req.headers;
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized: No token provided",
+    });
+  }
+  let { title, description, status, dueDate, priority } = req.body;
+  if (!title || !description || !status || !dueDate || !priority) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET_KEY);
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Invalid token",
+      });
+    }
+    const userId = decoded.id;
+    const givenDate = new Date(dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (givenDate >= today) {
+      status = "pending";
+    }
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, userId },
+      { title, description, status, dueDate, priority },
+      { new: true }
+    );
+
     if (!updatedTask) {
       return res.status(404).json({
         success: false,
