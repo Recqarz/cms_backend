@@ -99,7 +99,7 @@ export const cnrAutoUpdateInstanceTwo = async () => {
             "Next Hearing Date": caseItem?.caseStatus[1][1],
           };
           const response = await fetch(
-            process.env.PYTHON_API_URL_UPDATEINSTANCEONE,
+            process.env.PYTHON_API_URL_UPDATEINSTANCETWO,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
