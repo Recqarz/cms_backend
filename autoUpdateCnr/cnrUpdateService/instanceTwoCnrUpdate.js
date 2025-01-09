@@ -100,6 +100,7 @@ export const cnrAutoUpdateInstanceTwo = async () => {
           };
           const response = await fetch(
             process.env.PYTHON_API_URL_UPDATEINSTANCETWO,
+            
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
