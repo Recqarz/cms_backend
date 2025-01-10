@@ -157,6 +157,33 @@ export const cnrAutoUpdateInstanceOne = async () => {
                     currUser
                   );
                 }
+                const jointUser = userObj?.jointUser;
+                if (jointUser.length > 0) {
+                  await Promise.all(
+                    jointUser.map(async (ele) => {
+                      if (ele.email) {
+                        await sendEmailWithOrderSheet(
+                          caseTitled,
+                          cnr,
+                          caseItem.caseStatus[1][1],
+                          nseurl[0].s3_url,
+                          { email: ele?.email }
+                        );
+                        console.log(ele?.email)
+                      }
+                      if (ele.mobile) {
+                        await sendWhatsAppWithOrderSheet(
+                          caseTitled,
+                          cnr,
+                          caseItem.caseStatus[1][1],
+                          nseurl[0].s3_url,
+                          { mobile: ele?.mobile }
+                        );
+                        console.log(ele?.mobile)
+                      }
+                    })
+                  );
+                }
               })
             );
           }
@@ -166,6 +193,11 @@ export const cnrAutoUpdateInstanceOne = async () => {
             ...nseurl,
           ];
 
+          const mergedcaseHistory = [
+            ...(existingRecord.caseHistory || []),
+            ...(responseData["Case History"] || []),
+          ];
+
           await CnrDetail.updateOne(
             { cnrNumber: cnr },
             {
@@ -173,7 +205,7 @@ export const cnrAutoUpdateInstanceOne = async () => {
                 status: responseData?.status,
                 acts: responseData.Acts || [],
                 caseDetails: responseData["Case Details"] || {},
-                caseHistory: responseData["Case History"] || [],
+                caseHistory: mergedcaseHistory,
                 caseStatus: responseData["Case Status"] || [],
                 caseTransferDetails:
                   responseData["Case Transfer Details"] || [],
