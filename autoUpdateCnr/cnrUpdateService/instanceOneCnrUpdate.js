@@ -75,17 +75,21 @@ export const cnrAutoUpdateInstanceOne = async () => {
       date.setDate(today.getDate() - i);
       return formatDateWithSuffix(date);
     });
+    // const casesToUpdate = await CnrDetail.find({
+    //   $or: [
+    //     { "caseStatus.1.1": { $exists: false } },
+    //     { "caseStatus.1.1": { $in: dates } },
+    //   ],
+    // });
+
     const casesToUpdate = await CnrDetail.find({
-      $or: [
-        { "caseStatus.1.1": { $exists: false } },
-        { "caseStatus.1.1": { $in: dates } },
-      ],
+      "caseStatus.1.1": { $exists: false },
     });
 
-    const limit = Math.ceil(casesToUpdate.length / 2);
-    const cases = casesToUpdate.slice(0, limit);
+    // const limit = Math.ceil(casesToUpdate.length / 2);
+    // const cases = casesToUpdate.slice(0, limit);
 
-    for (const caseItem of cases) {
+    for (const caseItem of casesToUpdate) {
       const cnr = caseItem.cnrNumber;
 
       if (dataQueue.isAlreadyProcessing(cnr)) {
