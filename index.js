@@ -10,6 +10,8 @@ import { cleanUpTempResetStorageofall } from "./module/users/cronJob/cronJob.js"
 import { cleanUpArchiveCnr } from "./module/cases/autodeletecron/autodeletecron.job.js";
 import { sendHearingNotification } from "./notification/cronjobnotification.js";
 import { autoUpdateCnrAndSendOrderSheet } from "./autoUpdateCnr/cronjob.js";
+import { cnrAutoUpdateInstanceOne } from "./autoUpdateCnr/cnrUpdateService/instanceOneCnrUpdate.js";
+import { cnrAutoUpdateInstanceTwo } from "./autoUpdateCnr/cnrUpdateService/instanceTwoCnrUpdate.js";
 
 const app = express();
 
@@ -36,6 +38,8 @@ cleanUpTempResetStorageofall();
 cleanUpArchiveCnr();
 sendHearingNotification();
 autoUpdateCnrAndSendOrderSheet()
+cnrAutoUpdateInstanceOne()
+cnrAutoUpdateInstanceTwo()
 
 app.listen(port, async () => {
   console.log(`server is running on port ${port}`);
