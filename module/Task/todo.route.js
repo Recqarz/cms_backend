@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getTodos, addTodo, editTodo, deleteTodo, getExpireTodos, editExpireTodo } from "./todo.controller.js";
+import { getTodos, addTodo, editTodo, deleteTodo, getExpireTodos, editExpireTodo, getSubTodos, editSubTodo, acceptRequest, getRequestedTodos } from "./todo.controller.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -38,11 +38,19 @@ export const todoRoutes = Router();
 
 todoRoutes.get("/get-alltask", getTodos);
 
+todoRoutes.get("/get-sub-alltask", getSubTodos);
+
+todoRoutes.get("/get-requested-task", getRequestedTodos);
+
 todoRoutes.get("/get-expired-todos", getExpireTodos);
 
 todoRoutes.post("/add-task", upload.array("files"), asyncHandler(addTodo));
 
 todoRoutes.put("/edit-task/:id", editTodo);
+
+todoRoutes.put("/edit-sub-task/:id", editSubTodo);
+
+todoRoutes.put("/accept-completed-task/:id", acceptRequest);
 
 todoRoutes.put("/edit-expire-task/:id", editExpireTodo);
 
