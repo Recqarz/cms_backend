@@ -6,7 +6,7 @@ const todoSchema = new mongoose.Schema(
     description: { type: String },
     status: {
       type: String,
-      enum: ["pending", "inProgress", "completed","expired"],
+      enum: ["pending", "inProgress", "completed", "expired"],
       default: "pending",
     },
     dueDate: { type: Date },
@@ -26,6 +26,23 @@ const todoSchema = new mongoose.Schema(
     cnrNumber: {
       type: String,
       required: true,
+    },
+    action: {
+      type: String,
+      enum: ["assign", "requsted", "accepted"],
+      default: "assign",
+    },
+    remarks: {
+      type: String,
+      default: "",
+    },
+    responder: {
+      type: String,
+      default: "",
+    },
+    subUser: {
+      type: [],
+      default: [],
     },
   },
   { timestamps: true }

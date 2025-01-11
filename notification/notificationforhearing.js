@@ -33,7 +33,7 @@ export const dataToSendNotification11am = async () => {
     today.setDate(today.getDate() + 1);
     today.setHours(0, 0, 0, 0);
     const thresholdDate = new Date(today);
-    thresholdDate.setDate(today.getDate() + 4);
+    thresholdDate.setDate(today.getDate() + 3);
     thresholdDate.setHours(23, 59, 59, 999);
 
     const cases = await CnrDetail.find({

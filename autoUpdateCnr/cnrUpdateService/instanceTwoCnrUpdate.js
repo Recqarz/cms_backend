@@ -76,9 +76,11 @@ export const cnrAutoUpdateInstanceTwo = async () => {
       return formatDateWithSuffix(date);
     });
     const casesToUpdate = await CnrDetail.find({
-      "caseStatus.1.1": { $in: dates },
+      $or: [
+        { "caseStatus.1.1": { $exists: false } },
+        { "caseStatus.1.1": { $in: dates } },
+      ],
     });
-
     const limit = Math.floor(casesToUpdate.length / 2);
     const cases = casesToUpdate.slice(limit, casesToUpdate.length);
 
@@ -169,7 +171,7 @@ export const cnrAutoUpdateInstanceTwo = async () => {
                           nseurl[0].s3_url,
                           { email: ele?.email }
                         );
-                        console.log(ele?.email)
+                        console.log(ele?.email);
                       }
                       if (ele.mobile) {
                         await sendWhatsAppWithOrderSheet(
@@ -179,7 +181,7 @@ export const cnrAutoUpdateInstanceTwo = async () => {
                           nseurl[0].s3_url,
                           { mobile: ele?.mobile }
                         );
-                        console.log(ele?.mobile)
+                        console.log(ele?.mobile);
                       }
                     })
                   );
