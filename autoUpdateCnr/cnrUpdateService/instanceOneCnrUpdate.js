@@ -75,19 +75,11 @@ export const cnrAutoUpdateInstanceOne = async () => {
       date.setDate(today.getDate() - i);
       return formatDateWithSuffix(date);
     });
-    // const casesToUpdate = await CnrDetail.find({
-    //   $or: [
-    //     { "caseStatus.1.1": { $exists: false } },
-    //     { "caseStatus.1.1": { $in: dates } },
-    //   ],
-    // });
 
     const casesToUpdate = await CnrDetail.find({
       "caseStatus.1.1": { $exists: false },
     });
-
-    // const limit = Math.ceil(casesToUpdate.length / 2);
-    // const cases = casesToUpdate.slice(0, limit);
+    console.log(casesToUpdate.length);
 
     for (const caseItem of casesToUpdate) {
       const cnr = caseItem.cnrNumber;
@@ -103,7 +95,6 @@ export const cnrAutoUpdateInstanceOne = async () => {
         try {
           const requestBody = {
             cnr_number: cnr,
-            "Next Hearing Date": caseItem?.caseStatus[1][1],
           };
           const response = await fetch(
             process.env.PYTHON_API_URL_UPDATEINSTANCEONE,
@@ -113,9 +104,8 @@ export const cnrAutoUpdateInstanceOne = async () => {
               body: JSON.stringify(requestBody),
             }
           );
-
           const responseData = await response.json();
-
+          console.log(responseData);
           if (responseData.error === "Invalid_cnr") {
             console.log("Error: Invalid CNR while updating:", cnr);
             return;
@@ -131,11 +121,14 @@ export const cnrAutoUpdateInstanceOne = async () => {
             const firstLine = text.split("\n")[0].trim();
             return firstLine.replace(/^\d+\)\s*/, "").trim();
           }
-
           const cleanedRespondent =
-            cleanFirstLine(caseItem?.respondentAndAdvocate[0][0]) || "";
+            cleanFirstLine(
+              responseData?.["Petitioner and Advocate"]?.[0]?.[0]
+            ) || "";
           const cleanedPetitioner =
-            cleanFirstLine(caseItem?.petitionerAndAdvocate[0][0]) || "";
+            cleanFirstLine(
+              responseData?.["Petitioner and Advocate"]?.[0]?.[0]
+            ) || "";
           const caseTitled = `${cleanedPetitioner} VS ${cleanedRespondent}`;
 
           const existingRecord = await CnrDetail.findOne({ cnrNumber: cnr });
@@ -201,8 +194,10 @@ export const cnrAutoUpdateInstanceOne = async () => {
           ];
 
           const mergedcaseHistory = [
-            ...(existingRecord.caseHistory || []),
-            ...(responseData["Case History"] || []),
+            ...(existingRecord?.caseHistory || []),
+            ...(Array.isArray(responseData["Case History"])
+              ? responseData["Case History"]
+              : []),
           ];
 
           await CnrDetail.updateOne(
