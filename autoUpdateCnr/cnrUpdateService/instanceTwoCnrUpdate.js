@@ -78,8 +78,6 @@ export const cnrAutoUpdateInstanceTwo = async () => {
     const casesToUpdate = await CnrDetail.find({
       "caseStatus.1.1": { $in: dates },
     });
-    // const limit = Math.floor(casesToUpdate.length / 2);
-    // const cases = casesToUpdate.slice(limit, casesToUpdate.length);
 
     for (const caseItem of casesToUpdate) {
       const cnr = caseItem.cnrNumber;
