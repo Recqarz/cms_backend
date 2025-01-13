@@ -78,8 +78,7 @@ export const cnrAutoUpdateInstanceTwo = async () => {
     const casesToUpdate = await CnrDetail.find({
       "caseStatus.1.1": { $in: dates },
     });
-    // const limit = Math.floor(casesToUpdate.length / 2);
-    // const cases = casesToUpdate.slice(limit, casesToUpdate.length);
+    console.log(casesToUpdate.length)
 
     for (const caseItem of casesToUpdate) {
       const cnr = caseItem.cnrNumber;
@@ -107,6 +106,7 @@ export const cnrAutoUpdateInstanceTwo = async () => {
           );
 
           const responseData = await response.json();
+          console.log(responseData)
 
           if (responseData.error === "Invalid_cnr") {
             console.log("Error: Invalid CNR while updating:", cnr);
